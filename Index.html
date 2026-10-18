@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Amazing Race Tracker - Pro Edition</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        neon: {
+                            volt: '#CCFF00',   // High-vis yellow-green
+                            blue: '#00F0FF',   // Electric cyan
+                            pink: '#FF0055',   // Hot pink/red
+                            dark: '#0A0A0C',   // Deep space black
+                            panel: '#141418',  // Slightly lighter dark for panels
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        sport: ['Impact', 'Arial Black', 'sans-serif'],
+                        tech: ['Rajdhani', 'monospace'] // Adding a tech-y font look
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'slide-up': 'slideUp 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Rajdhani:wght@500;700&display=swap');
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0A0A0C; 
+            color: white; 
+            overflow: hidden; /* Prevent body scroll */
+        }
+        
+        /* Sporty Racing Stripes Background */
+        .bg-stripes {
+            background-image: repeating-linear-gradient(
+                -45deg,
+                rgba(255, 255, 255, 0.02),
+                rgba(255, 255, 255, 0.02) 10px,
+                transparent 10px,
+                transparent 20px
+            );
+        }
+
+        .font-sport { font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: 1.5px; }
+        .font-tech { font-family: 'Rajdhani', monospace; letter-spacing: 0.5px; }
+        
+        /* Glass & Glow */
+        .glass-panel { 
+            background: rgba(20, 20, 24, 0.75); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+        }
+        
+        .glow-volt { box-shadow: 0 0 15px rgba(204, 255, 0, 0.3), inset 0 0 10px rgba(204, 255, 0, 0.1); border-color: #CCFF00; }
+        .glow-blue { box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 10px rgba(0, 240, 255, 0.1); border-color: #00F0FF; }
+        .glow-pink { box-shadow: 0 0 15px rgba(255, 0, 85, 0.3), inset 0 0 10px rgba(255, 0, 85, 0.1); border-color: #FF0055; }
+
+        /* Angled Cuts */
+        .cut-corner { clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px); }
+        .cut-corner-sm { clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+        .skewed-btn { transform: skewX(-15deg); }
+        .skewed-btn > * { transform: skewX(15deg); display: inline-block; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+        ::-webkit-scrollbar-thumb { background: #00F0FF; border-radius: 2px; }
+
+        #admin-map { height: 100%; width: 100%; z-index: 1; background: #0A0A0C;}
+        
+        /* Leaflet Overrides */
+        .leaflet-popup-content-wrapper { background: #141418; color: white; border: 1px solid #00F0FF; border-radius: 0; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3); }
+        .leaflet-popup-tip { background: #141418; border: 1px solid #00F0FF; }
+        .custom-div-icon { background: transparent; border: none; }
+        
+        /* Map dark mode filter for more contrast with neon */
+        .leaflet-layer,
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out,
+        .leaflet-control-attribution { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(120%); }
+
+        /* Loader */
+        .hex-loader {
+            width: 50px;
+            height: 50px;
+            background: conic-gradient(from 0deg, transparent 0%, #CCFF00 20%, transparent 40%);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col relative bg-neon-dark bg-stripes">
+
+    <!-- App Header (Sporty Angles) -->
+    <header class="bg-black/90 border-b-2 border-neon-volt p-3 z-10 flex justify-between items-center shrink-0 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-neon-volt/10 to-transparent"></div>
+        <div class="flex items-center relative z-10">
+            <div class="bg-neon-volt text-black h-10 w-10 flex items-center justify-center cut-corner-sm mr-3">
+                <i class="fa-solid fa-flag-checkered text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-sport text-white uppercase italic leading-tight shadow-neon-volt drop-shadow-md">
+                    AMAZING <span class="text-neon-volt">RACE</span> HQ
+                </h1>
+                <p class="text-[10px] font-tech tracking-widest text-neon-blue uppercase hidden md:block">Real-Time Telemetry & Comms</p>
+            </div>
+        </div>
+        <div id="status-indicator" class="font-tech font-bold text-gray-500 bg-neon-panel border border-gray-800 px-3 py-1 cut-corner-sm flex items-center shadow-lg relative z-10">
+            <i class="fa-solid fa-circle text-[8px] mr-2"></i> <span>OFFLINE</span>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 relative overflow-hidden flex flex-col">
+        
+        <!-- LOADING OVERLAY -->
+        <div id="loading-screen" class="absolute inset-0 bg-neon-dark z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
+            <div class="hex-loader mb-6 relative">
+                <div class="absolute inset-2 bg-neon-dark rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-bolt text-neon-volt text-sm"></i>
+                </div>
+            </div>
+            <p class="text-neon-blue font-tech tracking-[0.2em] animate-pulse">INITIALIZING TELEMETRY...</p>
+        </div>
+
+        <!-- SCREEN 1: ROLE SELECTION -->
+        <div id="role-screen" class="hidden h-full w-full flex flex-col items-center justify-center p-4 relative z-10">
+            <div class="w-full max-w-4xl grid md:grid-cols-2 gap-6 p-4">
+                
+                <!-- Participant Card -->
+                <button onclick="app.showParticipantSetup()" class="group relative bg-neon-panel border border-gray-800 p-8 cut-corner transition-all hover:border-neon-volt hover:glow-volt overflow-hidden flex flex-col items-center justify-center min-h-[300px]">
+                    <div class="absolute inset-0 bg-neon-volt/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    <div class="h-20 w-20 rounded-full border-2 border-neon-volt text-neon-volt flex items-center justify-center text-4xl mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-person-running"></i>
+                    </div>
+                    <h2 class="text-3xl font-sport text-white uppercase italic">Enter as Team</h2>
+                    <p class="text-gray-400 font-tech mt-2">Broadcast GPS & Comm HQ</p>
+                </button>
+
+                <!-- Admin Card -->
+                <button onclick="app.showAdminLogin()" class="group relative bg-neon-panel border border-gray-800 p-8 cut-corner transition-all hover:border-neon-pink hover:glow-pink overflow-hidden flex flex-col items-center justify-center min-h-[300px]">
+                    <div class="absolute inset-0 bg-neon-pink/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    <div class="h-20 w-20 rounded-full border-2 border-neon-pink text-neon-pink flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-satellite-dish"></i>
+                    </div>
+                    <h2 class="text-3xl font-sport text-white uppercase italic">Command Center</h2>
+                    <p class="text-gray-400 font-tech mt-2">Monitor Teams & Manage Race</p>
+                </button>
+
+            </div>
+        </div>
+
+        <!-- SCREEN 1B: PARTICIPANT SETUP -->
+        <div id="participant-setup-screen" class="hidden h-full w-full flex flex-col items-center justify-center p-6 z-10 relative">
+            <div class="glass-panel p-8 cut-corner max-w-md w-full text-center space-y-6 glow-volt">
+                <div class="flex justify-between items-center mb-2">
+                    <button onclick="app.showRoleScreen()" class="text-gray-400 hover:text-neon-volt transition-colors"><i class="fa-solid fa-arrow-left"></i></button>
+                    <h2 class="text-2xl font-sport text-white uppercase italic">TEAM LOGIN</h2>
+                    <div class="w-4"></div>
+                </div>
+                
+                <div class="text-left space-y-4">
+                    <div>
+                        <label class="block text-xs font-tech text-neon-volt mb-1 tracking-wider uppercase">Team Roster Name</label>
+                        <input type="text" id="team-name-input" class="w-full bg-black border border-gray-700 cut-corner-sm px-4 py-3 text-white focus:outline-none focus:border-neon-volt focus:glow-volt transition-all font-tech text-lg uppercase" placeholder="e.g. VIPERS">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-tech text-neon-volt mb-1 tracking-wider uppercase">Access PIN</label>
+                        <input type="password" id="team-pin-input" class="w-full bg-black border border-gray-700 cut-corner-sm px-4 py-3 text-white focus:outline-none focus:border-neon-volt focus:glow-volt transition-all font-tech text-lg" placeholder="••••">
+                    </div>
+                </div>
+
+                <button onclick="app.joinAsParticipant()" class="w-full bg-neon-volt text-black font-sport text-xl py-3 skewed-btn hover:bg-white transition-colors mt-6 shadow-[0_0_15px_rgba(204,255,0,0.4)]">
+                    <span>INITIATE TRACKING <i class="fa-solid fa-play ml-2 text-sm"></i></span>
+                </button>
+                <p id="setup-error" class="text-neon-pink text-sm font-tech bg-neon-pink/10 border border-neon-pink/30 p-2 cut-corner-sm hidden animate-pulse"></p>
+            </div>
+        </div>
+
+        <!-- SCREEN 1C: ADMIN LOGIN -->
+        <div id="admin-login-screen" class="hidden h-full w-full flex flex-col items-center justify-center p-6 z-10 relative">
+            <div class="glass-panel p-8 cut-corner max-w-md w-full text-center space-y-6 glow-pink">
+                <div class="flex justify-between items-center mb-2">
+                    <button onclick="app.showRoleScreen()" class="text-gray-400 hover:text-neon-pink transition-colors"><i class="fa-solid fa-arrow-left"></i></button>
+                    <h2 class="text-2xl font-sport text-white uppercase italic">OVERRIDE LOGIN</h2>
+                    <div class="w-4"></div>
+                </div>
+                
+                <div class="text-left">
+                    <label class="block text-xs font-tech text-neon-pink mb-1 tracking-wider uppercase">HQ Master Password</label>
+                    <input type="password" id="admin-password-input" class="w-full bg-black border border-gray-700 cut-corner-sm px-4 py-3 text-white focus:outline-none focus:border-neon-pink focus:glow-pink transition-all font-tech text-lg" placeholder="••••••••">
+                    <p class="text-[10px] text-gray-500 mt-2 font-tech">SYSTEM DEFAULT: <code class="text-neon-pink">admin123</code></p>
+                </div>
+
+                <button onclick="app.joinAsAdmin()" class="w-full bg-neon-pink text-white font-sport text-xl py-3 skewed-btn hover:bg-white hover:text-neon-pink transition-colors mt-6 shadow-[0_0_15px_rgba(255,0,85,0.4)]">
+                    <span>ACCESS COMMAND <i class="fa-solid fa-unlock ml-2 text-sm"></i></span>
+                </button>
+                <p id="admin-login-error" class="text-neon-pink text-sm font-tech bg-neon-pink/10 border border-neon-pink/30 p-2 cut-corner-sm hidden animate-pulse"></p>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: PARTICIPANT DASHBOARD -->
+        <div id="participant-screen" class="hidden h-full w-full flex flex-col relative z-10">
+            <!-- Telemetry Header -->
+            <div class="bg-black border-b border-neon-volt/30 p-4 shrink-0 flex items-center justify-between relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-neon-volt/10 to-transparent"></div>
+                <div class="flex items-center gap-4 relative z-10">
+                    <div id="participant-avatar-display" class="h-14 w-14 cut-corner-sm bg-neon-volt text-black flex items-center justify-center font-sport text-2xl overflow-hidden border border-white glow-volt">
+                        <!-- Initials or photo -->
+                    </div>
+                    <div>
+                        <h3 id="participant-team-name" class="font-sport text-2xl text-white uppercase italic">TEAM</h3>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="relative flex h-3 w-3">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-volt opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-3 w-3 bg-neon-volt"></span>
+                            </span>
+                            <p id="participant-status-label" class="text-xs font-tech text-neon-volt tracking-widest uppercase">GPS BROADCASTING</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Comms Interface -->
+            <div class="flex-1 flex flex-col bg-neon-panel relative border-t-4 border-black">
+                <!-- Tabs -->
+                <div class="flex bg-black shrink-0 font-tech tracking-wider uppercase text-sm">
+                    <button onclick="app.switchParticipantTab('private')" id="tab-private" class="flex-1 py-3 border-b-2 border-neon-blue text-neon-blue transition-colors bg-neon-blue/10"><i class="fa-solid fa-walkie-talkie mr-2"></i>HQ Direct</button>
+                    <button onclick="app.switchParticipantTab('group')" id="tab-group" class="flex-1 py-3 border-b-2 border-transparent text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-earth-americas mr-2"></i>Global Comm</button>
+                </div>
+
+                <!-- Chat Area -->
+                <div id="participant-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"></div>
+                
+                <!-- Input -->
+                <form id="participant-chat-form" class="p-3 bg-black border-t border-gray-800 flex gap-2 shrink-0">
+                    <input type="text" id="participant-message-input" autocomplete="off" placeholder="TRANSMIT MESSAGE..." class="flex-1 bg-neon-panel border border-gray-700 cut-corner-sm px-4 py-3 text-white font-tech focus:outline-none focus:border-neon-volt focus:glow-volt transition-all">
+                    <button type="submit" class="bg-neon-volt text-black h-12 w-16 cut-corner-sm flex items-center justify-center hover:bg-white transition-colors">
+                        <i class="fa-solid fa-paper-plane text-xl"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: ADMIN DASHBOARD -->
+        <div id="admin-screen" class="hidden h-full w-full flex flex-col z-10">
+            
+            <!-- Admin Top Navigation (Sporty Tabs) -->
+            <div class="bg-black flex border-b border-neon-pink/30 shrink-0 overflow-x-auto font-tech tracking-widest uppercase text-sm">
+                <button onclick="app.switchAdminTab('dashboard')" id="admin-tab-dashboard" class="flex-1 py-3 px-4 border-b-2 border-neon-pink text-neon-pink bg-neon-pink/10 whitespace-nowrap transition-colors"><i class="fa-solid fa-satellite mr-2"></i>Live Map</button>
+                <button onclick="app.switchAdminTab('manage')" id="admin-tab-manage" class="flex-1 py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-white whitespace-nowrap transition-colors"><i class="fa-solid fa-clipboard-user mr-2"></i>Roster</button>
+                <button onclick="app.switchAdminTab('settings')" id="admin-tab-settings" class="flex-1 py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-white whitespace-nowrap transition-colors"><i class="fa-solid fa-shield-halved mr-2"></i>Security</button>
+            </div>
+
+            <!-- Admin Tab 1: Live Dashboard -->
+            <div id="admin-view-dashboard" class="flex-1 flex flex-col lg:flex-row relative overflow-hidden bg-neon-panel">
+                
+                <!-- Map Area -->
+                <div class="flex-1 h-[50vh] lg:h-full relative glow-blue border-r border-neon-blue/20">
+                    <div id="admin-map" class="h-full w-full"></div>
+                    
+                    <!-- HUD Overlay -->
+                    <div class="absolute top-4 left-4 z-[400] glass-panel px-4 py-3 cut-corner-sm border border-neon-volt/30 pointer-events-none">
+                        <p class="text-[10px] font-tech text-gray-400 tracking-widest uppercase">Active Units</p>
+                        <div class="flex items-baseline gap-2">
+                            <p id="active-teams-count" class="text-3xl font-sport text-neon-volt">0</p>
+                            <span class="relative flex h-2 w-2">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-volt opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-2 w-2 bg-neon-volt"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Chat Sidebar -->
+                <div class="w-full lg:w-[400px] h-[50vh] lg:h-full flex flex-col shrink-0 bg-black">
+                    <div class="p-4 border-b border-gray-800 shrink-0 bg-neon-panel relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-r from-neon-pink/10 to-transparent"></div>
+                        <h3 class="font-sport text-white text-lg uppercase italic mb-3 relative z-10"><i class="fa-solid fa-tower-broadcast text-neon-pink mr-2"></i>HQ Comms</h3>
+                        <select id="admin-chat-select" onchange="app.switchAdminChat(this.value)" class="relative z-10 bg-black text-neon-blue font-tech tracking-wider text-sm cut-corner-sm px-3 py-2 border border-gray-700 focus:outline-none focus:border-neon-pink w-full appearance-none">
+                            <option value="group">ALL TEAMS BROADCAST</option>
+                        </select>
+                    </div>
+                    
+                    <div id="admin-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"></div>
+                    
+                    <form id="admin-chat-form" class="p-3 bg-neon-panel border-t border-gray-800 flex gap-2 shrink-0">
+                        <input type="text" id="admin-message-input" autocomplete="off" placeholder="TRANSMIT..." class="flex-1 bg-black border border-gray-700 cut-corner-sm px-4 py-2 text-white font-tech focus:outline-none focus:border-neon-pink focus:glow-pink transition-all">
+                        <button type="submit" class="bg-neon-pink text-white h-10 w-12 cut-corner-sm flex items-center justify-center hover:bg-white hover:text-neon-pink transition-colors">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Admin Tab 2: Manage Teams -->
+            <div id="admin-view-manage" class="hidden flex-1 overflow-y-auto p-6 space-y-8 bg-neon-dark relative">
+                
+                <!-- Registration Form -->
+                <div class="glass-panel p-6 cut-corner border border-neon-blue/30 relative overflow-hidden">
+                    <div class="absolute -right-10 -top-10 text-neon-blue/5 text-9xl font-sport italic pointer-events-none">ROSTER</div>
+                    <h3 class="text-2xl font-sport text-white mb-4 uppercase italic relative z-10"><i class="fa-solid fa-user-plus text-neon-blue mr-2"></i>Enlist New Team</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10 font-tech">
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1 tracking-widest uppercase">Team Name *</label>
+                            <input type="text" id="add-team-name" placeholder="e.g. TITANS" class="w-full bg-black border border-gray-700 cut-corner-sm px-3 py-2 text-white uppercase focus:outline-none focus:border-neon-blue focus:glow-blue">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1 tracking-widest uppercase">Access PIN *</label>
+                            <input type="text" id="add-team-pin" placeholder="e.g. 9999" class="w-full bg-black border border-gray-700 cut-corner-sm px-3 py-2 text-white focus:outline-none focus:border-neon-blue focus:glow-blue">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1 tracking-widest uppercase">Insignia (Photo)</label>
+                            <input type="file" id="add-team-photo" accept="image/*" class="w-full text-xs text-gray-400 file:mr-2 file:py-1.5 file:px-3 file:border-0 file:bg-neon-blue file:text-black file:font-bold file:cut-corner-sm hover:file:bg-white cursor-pointer">
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end relative z-10">
+                        <button onclick="app.createNewTeamManual()" class="bg-neon-blue text-black font-sport px-8 py-2 skewed-btn hover:bg-white transition-all text-lg shadow-[0_0_10px_rgba(0,240,255,0.3)]">
+                            <span>REGISTER <i class="fa-solid fa-check ml-1"></i></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Grid -->
+                <div>
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                        <h3 class="text-xl font-sport text-gray-300 uppercase italic"><i class="fa-solid fa-list-ul mr-2 text-neon-volt"></i>Active Roster</h3>
+                        <span id="registered-teams-count" class="text-xs font-tech tracking-widest bg-black px-3 py-1 cut-corner-sm text-neon-volt border border-gray-700">0 TEAMS</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="manage-teams-grid">
+                        <!-- Dynamic Team Cards Here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Tab 3: Security Settings -->
+            <div id="admin-view-settings" class="hidden flex-1 overflow-y-auto p-6 relative flex justify-center items-start bg-neon-dark">
+                <div class="glass-panel p-8 cut-corner max-w-md w-full my-auto border border-neon-pink/30 glow-pink">
+                    <h2 class="text-2xl font-sport text-white mb-6 uppercase italic"><i class="fa-solid fa-shield-halved text-neon-pink mr-2"></i>HQ Security</h2>
+                    <div class="space-y-4 font-tech">
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1 tracking-widest uppercase">New Master Password</label>
+                            <input type="password" id="new-password" class="w-full bg-black border border-gray-700 cut-corner-sm px-4 py-2 text-white focus:outline-none focus:border-neon-pink">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1 tracking-widest uppercase">Confirm Password</label>
+                            <input type="password" id="confirm-password" class="w-full bg-black border border-gray-700 cut-corner-sm px-4 py-2 text-white focus:outline-none focus:border-neon-pink">
+                        </div>
+                        <button onclick="app.updateAdminPassword()" class="w-full bg-neon-pink text-white font-sport text-xl py-3 skewed-btn hover:bg-white hover:text-neon-pink transition-colors mt-6 shadow-[0_0_15px_rgba(255,0,85,0.4)]">
+                            <span>UPDATE OVERRIDE KEY</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Custom Modals -->
+        
+        <!-- Alert Modal -->
+        <div id="custom-alert" class="hidden fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-neon-panel p-6 cut-corner max-w-sm w-full text-center border-2 border-neon-volt glow-volt animate-slide-up">
+                <h3 class="text-2xl font-sport text-white uppercase italic mb-2" id="alert-title">SYSTEM NOTICE</h3>
+                <p class="text-gray-300 font-tech mb-6 text-sm tracking-wide" id="alert-message">Message</p>
+                <button onclick="document.getElementById('custom-alert').classList.add('hidden')" class="bg-neon-volt text-black font-sport text-lg py-2 px-8 skewed-btn w-full hover:bg-white">
+                    <span>ACKNOWLEDGE</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Interactive Edit Team Modal -->
+        <div id="edit-team-modal" class="hidden fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-neon-panel p-6 cut-corner max-w-md w-full border-2 border-neon-blue glow-blue relative animate-slide-up">
+                <button onclick="document.getElementById('edit-team-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <h3 class="text-2xl font-sport text-white uppercase italic mb-6 border-b border-gray-700 pb-2"><i class="fa-solid fa-pen-to-square text-neon-blue mr-2"></i>Modify Roster</h3>
+                <input type="hidden" id="edit-team-id">
+                
+                <div class="space-y-4 font-tech">
+                    <div class="flex items-center gap-4 bg-black p-3 cut-corner-sm border border-gray-800">
+                        <div id="edit-team-photo-preview" class="h-16 w-16 bg-gray-800 border border-neon-blue cut-corner-sm flex items-center justify-center overflow-hidden font-sport text-xl text-white">
+                            <!-- Preview -->
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-[10px] text-gray-400 mb-1 tracking-widest uppercase">Update Insignia</label>
+                            <input type="file" id="edit-team-photo" accept="image/*" class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:border-0 file:bg-gray-700 file:text-white hover:file:bg-neon-blue hover:file:text-black file:cut-corner-sm cursor-pointer">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-gray-400 mb-1 tracking-widest uppercase">Team Designation</label>
+                        <input type="text" id="edit-team-name" class="w-full bg-black border border-gray-700 cut-corner-sm px-3 py-2 text-white uppercase focus:outline-none focus:border-neon-blue">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-gray-400 mb-1 tracking-widest uppercase">Access PIN</label>
+                        <input type="text" id="edit-team-pin" class="w-full bg-black border border-gray-700 cut-corner-sm px-3 py-2 text-white focus:outline-none focus:border-neon-blue">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-gray-400 mb-1 tracking-widest uppercase">Operational Status</label>
+                        <select id="edit-team-status" class="w-full bg-black border border-gray-700 cut-corner-sm px-3 py-2 text-white uppercase focus:outline-none focus:border-neon-blue appearance-none">
+                            <option value="active">ACTIVE</option>
+                            <option value="suspended">SUSPENDED</option>
+                            <option value="disqualified">DISQUALIFIED</option>
+                        </select>
+                    </div>
+
+                    <div class="pt-4 flex gap-3">
+                        <button onclick="app.deleteTeam()" class="bg-red-600/20 text-red-500 border border-red-500/50 hover:bg-red-600 hover:text-white font-sport py-2 px-4 cut-corner-sm transition-colors text-sm">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                        <button onclick="app.saveTeamEdit()" class="flex-1 bg-neon-blue text-black font-sport text-lg py-2 skewed-btn hover:bg-white transition-colors">
+                            <span>APPLY CHANGES</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Firebase Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Utilities
+        const showAlert = (title, message) => {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            document.getElementById('custom-alert').classList.remove('hidden');
+        };
+
+        const updateStatus = (text, isError = false) => {
+            const ind = document.getElementById('status-indicator');
+            const color = isError ? 'text-neon-pink' : 'text-neon-volt';
+            ind.innerHTML = `<i class="fa-solid fa-circle text-[8px] mr-2 ${color} ${!isError ? 'animate-pulse' : ''}"></i> <span class="${color}">${text}</span>`;
+            ind.className = `font-tech font-bold bg-neon-panel border px-3 py-1 cut-corner-sm flex items-center shadow-lg relative z-10 ${isError ? 'border-neon-pink' : 'border-neon-volt'}`;
+        };
+
+        const showScreen = (screenId) => {
+            ['loading-screen', 'role-screen', 'participant-setup-screen', 'admin-login-screen', 'participant-screen', 'admin-screen'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        };
+
+        const getInitials = (name) => {
+            if(!name) return '??';
+            const parts = name.trim().split(' ');
+            if(parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return name.substring(0, 2).toUpperCase();
+        };
+
+        // Resize image to compact base64
+        const processImageFile = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 150;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.8));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        };
+
+        // --- Application State ---
+        window.app = {
+            db: null, auth: null, userId: null, role: null, teamName: null, appId: null,
+            map: null, markers: {}, watchId: null, mapZoomedIn: false,
+            adminPasswordHash: 'admin123',
+            allMessages: [], participantChatTab: 'private', adminChatTarget: 'group', participantsList: {}, 
+
+            showParticipantSetup: () => showScreen('participant-setup-screen'),
+            showAdminLogin: () => showScreen('admin-login-screen'),
+            showRoleScreen: () => showScreen('role-screen'),
+            
+            joinAsParticipant: async () => {
+                const nameInput = document.getElementById('team-name-input').value.trim().toUpperCase();
+                const pinInput = document.getElementById('team-pin-input').value.trim();
+                const err = document.getElementById('setup-error');
+                
+                if (!nameInput || !pinInput) {
+                    err.innerText = "ACCESS DENIED: MISSING CREDENTIALS";
+                    err.classList.remove('hidden');
+                    return;
+                }
+
+                let existingTeam = null;
+                for (const [id, team] of Object.entries(app.participantsList)) {
+                    if (team.name.toUpperCase() === nameInput) {
+                        existingTeam = team; break;
+                    }
+                }
+
+                if (existingTeam) {
+                    if (existingTeam.pin && existingTeam.pin !== pinInput) {
+                        err.innerText = "ACCESS DENIED: INVALID PIN";
+                        err.classList.remove('hidden');
+                        return;
+                    }
+                    if (existingTeam.status === 'disqualified' || existingTeam.status === 'suspended') {
+                        err.innerText = `ACCESS DENIED: STATUS [${existingTeam.status.toUpperCase()}]`;
+                        err.classList.remove('hidden');
+                        return;
+                    }
+                }
+
+                app.teamName = nameInput;
+                app.role = 'participant';
+                document.getElementById('participant-team-name').innerText = app.teamName;
+                
+                const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.userId);
+                await setDoc(myRef, {
+                    name: app.teamName, pin: pinInput, status: 'active', lastUpdated: serverTimestamp()
+                }, { merge: true });
+
+                showScreen('participant-screen');
+                app.startTracking();
+                app.setupChat();
+                app.switchParticipantTab('private');
+            },
+
+            joinAsAdmin: () => {
+                const pwd = document.getElementById('admin-password-input').value;
+                if (pwd !== app.adminPasswordHash) {
+                    const err = document.getElementById('admin-login-error');
+                    err.innerText = "ACCESS DENIED: INVALID KEY";
+                    err.classList.remove('hidden');
+                    return;
+                }
+                app.role = 'admin';
+                app.teamName = 'COMMAND HQ';
+                showScreen('admin-screen');
+                app.initMap();
+                app.setupAdminTracking();
+                app.setupChat();
+                setTimeout(() => app.map.invalidateSize(), 500);
+            },
+
+            startTracking: () => {
+                if (!navigator.geolocation) {
+                    showAlert('SYSTEM ERROR', 'GPS Telemetry not supported on this device.');
+                    return;
+                }
+                updateStatus('ACQUIRING SATELLITE...');
+
+                const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.userId);
+                
+                onSnapshot(myRef, (docSnap) => {
+                    if(docSnap.exists()){
+                        const data = docSnap.data();
+                        app.teamName = data.name || app.teamName;
+                        document.getElementById('participant-team-name').innerText = app.teamName.toUpperCase();
+                        
+                        const avatarDiv = document.getElementById('participant-avatar-display');
+                        if(data.photoUrl) {
+                            avatarDiv.innerHTML = `<img src="${data.photoUrl}" class="h-full w-full object-cover">`;
+                        } else {
+                            avatarDiv.innerHTML = getInitials(app.teamName);
+                        }
+
+                        const statusLabel = document.getElementById('participant-status-label');
+                        if(data.status && data.status !== 'active') {
+                            statusLabel.innerText = `STATUS: ${data.status.toUpperCase()}`;
+                            statusLabel.className = "text-xs font-tech text-neon-pink tracking-widest uppercase font-bold";
+                            avatarDiv.classList.replace('glow-volt', 'glow-pink');
+                            avatarDiv.classList.replace('bg-neon-volt', 'bg-neon-pink');
+                        } else {
+                            statusLabel.innerText = `GPS BROADCASTING`;
+                            statusLabel.className = "text-xs font-tech text-neon-volt tracking-widest uppercase";
+                            avatarDiv.classList.replace('glow-pink', 'glow-volt');
+                            avatarDiv.classList.replace('bg-neon-pink', 'bg-neon-volt');
+                        }
+                    }
+                });
+
+                app.watchId = navigator.geolocation.watchPosition(
+                    async (position) => {
+                        const { latitude, longitude } = position.coords;
+                        updateStatus('LINK ACTIVE');
+                        
+                        if(app.userId && app.db) {
+                            try {
+                                await setDoc(myRef, { lat: latitude, lng: longitude, lastUpdated: serverTimestamp() }, { merge: true });
+                            } catch(e) { console.error("Telemetry sync error:", e); }
+                        }
+                    },
+                    (error) => {
+                        console.error('GPS Error:', error);
+                        updateStatus('SIGNAL LOST', true);
+                    },
+                    { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+                );
+            },
+
+            initMap: () => {
+                if(app.map) return;
+                app.map = L.map('admin-map', { zoomControl: false }).setView([10.3157, 123.8854], 13);
+                L.control.zoom({ position: 'bottomright' }).addTo(app.map);
+                
+                // OpenStreetMap base map (No API key required)
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(app.map);
+            },
+
+            setupAdminTracking: () => {
+                const participantsRef = collection(app.db, 'artifacts', app.appId, 'public', 'data', 'participants');
+                
+                onSnapshot(participantsRef, (snapshot) => {
+                    let activeCount = 0;
+                    const bounds = [];
+                    const updatedParticipants = {};
+
+                    snapshot.forEach(docSnap => {
+                        const data = docSnap.data();
+                        updatedParticipants[docSnap.id] = data;
+
+                        if (data.lat && data.lng) {
+                            activeCount++;
+                            bounds.push([data.lat, data.lng]);
+                            
+                            let iconContent = data.photoUrl 
+                                ? `<img src="${data.photoUrl}" class="h-full w-full object-cover">`
+                                : `<span class="text-sm font-sport text-black">${getInitials(data.name)}</span>`;
+
+                            let colorClass = data.status === 'disqualified' ? 'border-neon-pink bg-neon-pink glow-pink' : 
+                                            (data.status === 'suspended' ? 'border-yellow-500 bg-yellow-500' : 'border-neon-volt bg-neon-volt glow-volt');
+
+                            const customIcon = L.divIcon({
+                                className: 'custom-div-icon',
+                                html: `<div class="${colorClass} cut-corner-sm h-10 w-10 flex items-center justify-center border-2 overflow-hidden relative shadow-lg">${iconContent}</div>`,
+                                iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -25]
+                            });
+
+                            const popupHtml = `
+                                <div class="text-center p-2 font-tech">
+                                    <strong class="text-neon-blue text-lg uppercase tracking-wider block border-b border-gray-700 pb-1 mb-1">${data.name}</strong>
+                                    <span class="text-[10px] text-gray-400 uppercase">Status: <b class="${data.status === 'active' ? 'text-neon-volt' : 'text-neon-pink'}">${data.status || 'ACTIVE'}</b></span><br>
+                                    <button onclick="app.switchAdminChat('${docSnap.id}'); app.switchAdminTab('dashboard');" class="mt-3 bg-neon-blue text-black font-sport px-4 py-1 skewed-btn text-xs w-full hover:bg-white transition-colors"><span>COMM LINK</span></button>
+                                </div>
+                            `;
+
+                            if(app.markers[docSnap.id]) {
+                                app.markers[docSnap.id].setLatLng([data.lat, data.lng]);
+                                app.markers[docSnap.id].setIcon(customIcon);
+                                app.markers[docSnap.id]._popup.setContent(popupHtml);
+                            } else {
+                                app.markers[docSnap.id] = L.marker([data.lat, data.lng], {icon: customIcon}).bindPopup(popupHtml).addTo(app.map);
+                            }
+                        }
+                    });
+
+                    Object.keys(app.markers).forEach(id => {
+                        if (!updatedParticipants[id]) {
+                            app.map.removeLayer(app.markers[id]);
+                            delete app.markers[id];
+                        }
+                    });
+
+                    app.participantsList = updatedParticipants;
+                    app.updateAdminDropdown();
+                    app.renderManageTeams();
+                    document.getElementById('active-teams-count').innerText = activeCount;
+                    
+                    if(bounds.length > 0 && !app.mapZoomedIn) {
+                        app.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+                        app.mapZoomedIn = true;
+                    }
+                });
+            },
+
+            switchAdminTab: (tabId) => {
+                ['dashboard', 'manage', 'settings'].forEach(id => {
+                    document.getElementById(`admin-view-${id}`).classList.add('hidden');
+                    const btn = document.getElementById(`admin-tab-${id}`);
+                    btn.classList.remove('border-neon-pink', 'text-neon-pink', 'bg-neon-pink/10');
+                    btn.classList.add('border-transparent', 'text-gray-500');
+                });
+                
+                document.getElementById(`admin-view-${tabId}`).classList.remove('hidden');
+                if(tabId === 'dashboard') document.getElementById(`admin-view-dashboard`).classList.add('flex');
+                
+                const activeBtn = document.getElementById(`admin-tab-${tabId}`);
+                activeBtn.classList.remove('border-transparent', 'text-gray-500');
+                activeBtn.classList.add('border-neon-pink', 'text-neon-pink', 'bg-neon-pink/10');
+
+                if (tabId === 'dashboard' && app.map) {
+                    setTimeout(() => app.map.invalidateSize(), 200);
+                }
+            },
+
+            createNewTeamManual: async () => {
+                const name = document.getElementById('add-team-name').value.trim().toUpperCase();
+                const pin = document.getElementById('add-team-pin').value.trim();
+                const photoInput = document.getElementById('add-team-photo');
+
+                if (!name || !pin) return showAlert("INPUT ERROR", "Team Designation and PIN are mandatory.");
+
+                let photoUrl = null;
+                if (photoInput.files && photoInput.files[0]) {
+                    try { photoUrl = await processImageFile(photoInput.files[0]); } catch(e) {}
+                }
+
+                try {
+                    await setDoc(doc(collection(app.db, 'artifacts', app.appId, 'public', 'data', 'participants')), {
+                        name: name, pin: pin, photoUrl: photoUrl, status: 'active', createdAt: serverTimestamp()
+                    });
+                    document.getElementById('add-team-name').value = '';
+                    document.getElementById('add-team-pin').value = '';
+                    document.getElementById('add-team-photo').value = '';
+                    showAlert("SUCCESS", `Team ${name} enrolled.`);
+                } catch(e) { showAlert("ERROR", "Database write failed."); }
+            },
+
+            renderManageTeams: () => {
+                const grid = document.getElementById('manage-teams-grid');
+                grid.innerHTML = '';
+                const entries = Object.entries(app.participantsList);
+                document.getElementById('registered-teams-count').innerText = `${entries.length} TEAMS`;
+
+                if (entries.length === 0) {
+                    grid.innerHTML = `<p class="text-gray-600 font-tech text-sm col-span-3">NO TEAMS FOUND IN DATABASE.</p>`; return;
+                }
+                
+                for (const [id, data] of entries) {
+                    const card = document.createElement('div');
+                    card.className = "bg-black p-4 cut-corner-sm flex items-center gap-4 border border-gray-800 hover:border-neon-blue transition-colors group relative overflow-hidden";
+                    
+                    let avatar = data.photoUrl 
+                        ? `<img src="${data.photoUrl}" class="h-14 w-14 cut-corner-sm object-cover border border-gray-600 shrink-0">`
+                        : `<div class="h-14 w-14 cut-corner-sm bg-gray-800 flex items-center justify-center font-sport text-xl text-white border border-gray-600 shrink-0">${getInitials(data.name)}</div>`;
+
+                    let statusBadge = data.status === 'disqualified' 
+                        ? `<span class="text-[8px] bg-neon-pink/20 text-neon-pink px-2 py-1 border border-neon-pink tracking-widest uppercase">DISQUALIFIED</span>`
+                        : (data.status === 'suspended' 
+                            ? `<span class="text-[8px] bg-yellow-500/20 text-yellow-500 px-2 py-1 border border-yellow-500 tracking-widest uppercase">SUSPENDED</span>`
+                            : `<span class="text-[8px] bg-neon-volt/20 text-neon-volt px-2 py-1 border border-neon-volt tracking-widest uppercase">ACTIVE</span>`);
+
+                    card.innerHTML = `
+                        <div class="absolute inset-0 bg-neon-blue/5 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-300"></div>
+                        <div class="relative z-10 flex w-full items-center gap-4">
+                            ${avatar}
+                            <div class="flex-1 overflow-hidden font-tech">
+                                <h4 class="font-bold text-white truncate text-lg uppercase tracking-wide">${data.name}</h4>
+                                <p class="text-[10px] text-gray-400 mb-1">PIN: <code class="text-neon-blue">${data.pin || 'NONE'}</code></p>
+                                ${statusBadge}
+                            </div>
+                            <button onclick="app.openEditTeamModal('${id}')" class="bg-gray-800 hover:bg-neon-blue hover:text-black text-white h-10 w-10 cut-corner-sm flex items-center justify-center transition-colors shrink-0">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                }
+            },
+
+            openEditTeamModal: (id) => {
+                const team = app.participantsList[id];
+                if(!team) return;
+                document.getElementById('edit-team-id').value = id;
+                document.getElementById('edit-team-name').value = team.name || '';
+                document.getElementById('edit-team-pin').value = team.pin || '';
+                document.getElementById('edit-team-status').value = team.status || 'active';
+                document.getElementById('edit-team-photo').value = '';
+
+                const preview = document.getElementById('edit-team-photo-preview');
+                preview.innerHTML = team.photoUrl ? `<img src="${team.photoUrl}" class="h-full w-full object-cover">` : getInitials(team.name);
+                document.getElementById('edit-team-modal').classList.remove('hidden');
+            },
+
+            saveTeamEdit: async () => {
+                const id = document.getElementById('edit-team-id').value;
+                const newName = document.getElementById('edit-team-name').value.trim().toUpperCase();
+                const newPin = document.getElementById('edit-team-pin').value.trim();
+                const fileInput = document.getElementById('edit-team-photo');
+                
+                if(!newName || !newPin) return showAlert("ERROR", "Designation and PIN required.");
+
+                let updateData = { name: newName, pin: newPin, status: document.getElementById('edit-team-status').value };
+                if (fileInput.files && fileInput.files[0]) {
+                    try { updateData.photoUrl = await processImageFile(fileInput.files[0]); } catch (e) { return showAlert("ERROR", "Image fail."); }
+                }
+
+                try {
+                    await setDoc(doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', id), updateData, { merge: true });
+                    document.getElementById('edit-team-modal').classList.add('hidden');
+                } catch (e) { showAlert("ERROR", "Save failed."); }
+            },
+
+            deleteTeam: async () => {
+                const id = document.getElementById('edit-team-id').value;
+                if(!id) return;
+                try {
+                    await deleteDoc(doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', id));
+                    document.getElementById('edit-team-modal').classList.add('hidden');
+                } catch(e) { showAlert("ERROR", "Delete failed."); }
+            },
+
+            updateAdminPassword: async () => {
+                const p1 = document.getElementById('new-password').value;
+                const p2 = document.getElementById('confirm-password').value;
+                if(p1 !== p2) return showAlert("ERROR", "Keys do not match.");
+                if(p1.length < 6) return showAlert("ERROR", "Key requires 6+ chars.");
+
+                try {
+                    await setDoc(doc(app.db, 'artifacts', app.appId, 'public', 'data', 'settings', 'admin'), { password: p1 }, { merge: true });
+                    app.adminPasswordHash = p1;
+                    document.getElementById('new-password').value = ''; document.getElementById('confirm-password').value = '';
+                    showAlert("SUCCESS", "Master Key Updated.");
+                } catch (e) { showAlert("ERROR", "Update failed."); }
+            },
+
+            updateAdminDropdown: () => {
+                const select = document.getElementById('admin-chat-select');
+                const currentValue = select.value;
+                let html = `<option value="group">ALL TEAMS BROADCAST</option>`;
+                for (const [id, data] of Object.entries(app.participantsList)) { html += `<option value="${id}">DIRECT: ${data.name}</option>`; }
+                select.innerHTML = html;
+                if(currentValue === 'group' || app.participantsList[currentValue]) { select.value = currentValue; } else { app.switchAdminChat('group'); }
+            },
+
+            switchParticipantTab: (tabName) => {
+                app.participantChatTab = tabName;
+                const tabP = document.getElementById('tab-private');
+                const tabG = document.getElementById('tab-group');
+                const input = document.getElementById('participant-message-input');
+
+                if (tabName === 'private') {
+                    tabP.className = "flex-1 py-3 border-b-2 border-neon-blue text-neon-blue bg-neon-blue/10 transition-colors";
+                    tabG.className = "flex-1 py-3 border-b-2 border-transparent text-gray-500 hover:text-white transition-colors";
+                    input.placeholder = "DIRECT TO HQ...";
+                } else {
+                    tabG.className = "flex-1 py-3 border-b-2 border-neon-volt text-neon-volt bg-neon-volt/10 transition-colors";
+                    tabP.className = "flex-1 py-3 border-b-2 border-transparent text-gray-500 hover:text-white transition-colors";
+                    input.placeholder = "GLOBAL TRANSMISSION...";
+                }
+                app.renderChat();
+            },
+
+            switchAdminChat: (target) => {
+                app.adminChatTarget = target;
+                document.getElementById('admin-chat-select').value = target;
+                document.getElementById('admin-message-input').placeholder = target === 'group' ? "GLOBAL TRANSMISSION..." : `DIRECT TO ${app.participantsList[target]?.name || "UNIT"}...`;
+                app.renderChat();
+            },
+
+            renderChat: () => {
+                const containerId = app.role === 'admin' ? 'admin-chat-messages' : 'participant-chat-messages';
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+
+                let filtered = app.role === 'admin' 
+                    ? app.allMessages.filter(m => m.chatType === app.adminChatTarget || (app.adminChatTarget !== 'group' && m.chatType === 'private' && m.targetParticipantId === app.adminChatTarget) || (app.adminChatTarget === 'group' && m.chatType === 'group'))
+                    : app.allMessages.filter(m => m.chatType === app.participantChatTab && (m.chatType === 'group' || m.targetParticipantId === app.userId));
+
+                filtered.forEach(msg => {
+                    const isMe = msg.senderId === app.userId;
+                    const isAdminMsg = msg.isAdmin;
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-3 animate-slide-up`;
+                    
+                    let themeClass = '';
+                    if (isMe) themeClass = app.role === 'admin' ? 'bg-neon-pink text-white border-none' : 'bg-neon-volt text-black border-none';
+                    else if (isAdminMsg) themeClass = 'bg-black text-neon-pink border border-neon-pink shadow-[0_0_10px_rgba(255,0,85,0.3)]';
+                    else themeClass = 'bg-gray-800 text-white border-l-2 border-neon-blue';
+
+                    wrapper.innerHTML = `
+                        <span class="text-[9px] font-tech tracking-widest text-gray-500 mb-1 px-1 uppercase">${msg.senderName} ${isAdminMsg && !isMe ? '<i class="fa-solid fa-shield-halved text-neon-pink ml-1"></i>' : ''}</span>
+                        <div class="px-4 py-2 cut-corner-sm max-w-[85%] ${themeClass} font-tech text-sm tracking-wide">
+                            <p class="break-words">${msg.text}</p>
+                        </div>
+                    `;
+                    container.appendChild(wrapper);
+                });
+                container.scrollTop = container.scrollHeight;
+            },
+
+            setupChat: () => {
+                const messagesRef = collection(app.db, 'artifacts', app.appId, 'public', 'data', 'messages');
+
+                onSnapshot(messagesRef, (snapshot) => {
+                    const messages = [];
+                    snapshot.forEach(docSnap => {
+                        const data = docSnap.data();
+                        messages.push({ id: docSnap.id, ...data, time: data.timestamp ? data.timestamp.toMillis() : Date.now() });
+                    });
+                    messages.sort((a, b) => a.time - b.time);
+                    app.allMessages = messages;
+                    app.renderChat();
+                });
+
+                const formId = app.role === 'admin' ? 'admin-chat-form' : 'participant-chat-form';
+                const inputId = app.role === 'admin' ? 'admin-message-input' : 'participant-message-input';
+                
+                document.getElementById(formId).addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const input = document.getElementById(inputId);
+                    const text = input.value.trim();
+                    if(!text) return;
+                    input.value = '';
+                    
+                    let chatType = (app.role === 'admin' ? app.adminChatTarget : app.participantChatTab) === 'group' ? 'group' : 'private';
+                    let target = app.role === 'admin' ? (app.adminChatTarget === 'group' ? null : app.adminChatTarget) : (app.participantChatTab === 'group' ? null : app.userId);
+                    
+                    try {
+                        await addDoc(messagesRef, { senderId: app.userId, senderName: app.teamName, text: text, timestamp: serverTimestamp(), isAdmin: app.role === 'admin', chatType: chatType, targetParticipantId: target });
+                    } catch(error) { showAlert("ERROR", "Transmission failed."); }
+                });
+            }
+        };
+
+        const init = async () => {
+            try {
+                app.appId = typeof __app_id !== 'undefined' ? __app_id : 'amazing-race-pro';
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                if (!firebaseConfig) throw new Error("Firebase DB config missing.");
+
+                const firebaseApp = initializeApp(firebaseConfig);
+                app.auth = getAuth(firebaseApp);
+                app.db = getFirestore(firebaseApp);
+
+                if (token) await signInWithCustomToken(app.auth, token);
+                else await signInAnonymously(app.auth);
+                
+                app.userId = app.auth.currentUser?.uid;
+                if(!app.userId) throw new Error("Auth block.");
+
+                const settingsRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'settings', 'admin');
+                const docSnap = await getDoc(settingsRef);
+                if (docSnap.exists() && docSnap.data().password) app.adminPasswordHash = docSnap.data().password;
+                else await setDoc(settingsRef, { password: 'admin123' }, { merge: true });
+
+                onSnapshot(collection(app.db, 'artifacts', app.appId, 'public', 'data', 'participants'), (snap) => {
+                    const list = {}; snap.forEach(d => list[d.id] = d.data()); app.participantsList = list;
+                });
+
+                setTimeout(() => {
+                    updateStatus('SYSTEM ONLINE');
+                    showScreen('role-screen');
+                }, 800); // Artificial delay for cool loading screen effect
+
+            } catch (error) {
+                document.getElementById('loading-screen').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-neon-pink text-4xl mb-4"></i><p class="text-white text-center font-tech tracking-widest uppercase">SYS_FAIL<br><span class="text-xs text-neon-pink">${error.message}</span></p>`;
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
