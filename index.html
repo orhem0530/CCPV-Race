@@ -6,15 +6,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#121212">
-    <!-- Prevent 404 favicon error on Vercel/GitHub Pages -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏁</text></svg>">
     <title>Amazing Race HQ</title>
 
-    <!-- Leaflet CSS for Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
     <style>
-        /* Sporty, Neon Dark Theme */
         :root {
             --bg-color: #121212;
             --surface-color: #1e1e1e;
@@ -26,20 +23,18 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
         body { background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 
-        /* Generic UI Elements */
         .btn-neon {
             background: transparent; color: var(--neon-green); border: 2px solid var(--neon-green);
-            padding: 12px 24px; font-size: 16px; font-weight: bold; text-transform: uppercase;
-            border-radius: 8px; cursor: pointer; transition: all 0.3s ease; width: 100%;
-            text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
-            box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+            padding: 12px; font-size: 14px; font-weight: bold; text-transform: uppercase;
+            border-radius: 8px; cursor: pointer; transition: all 0.3s ease; text-align: center;
+            text-shadow: 0 0 5px rgba(57, 255, 20, 0.5); box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
         }
-        .btn-neon:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 20px rgba(57, 255, 20, 0.6); }
+        .btn-neon:hover { background: var(--neon-green); color: #000; }
         .btn-blue { border-color: var(--neon-blue); color: var(--neon-blue); text-shadow: 0 0 5px rgba(0, 243, 255, 0.5); box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); }
-        .btn-blue:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px rgba(0, 243, 255, 0.6); }
+        .btn-blue:hover { background: var(--neon-blue); color: #000; }
+        .btn-danger { border-color: var(--danger); color: #fff; background: var(--danger); box-shadow: 0 0 15px rgba(255, 0, 60, 0.6); }
         
         input, select {
             width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px;
@@ -47,52 +42,56 @@
         }
         input:focus, select:focus { outline: none; border-color: var(--neon-blue); }
 
-        /* Screens */
         .screen { display: none; min-height: 100vh; flex-direction: column; }
         .screen.active { display: flex; }
 
-        /* Login Screen */
         #login-screen { justify-content: center; align-items: center; padding: 20px; background: linear-gradient(45deg, #000, #1a1a1a); }
-        .login-card { background: var(--surface-color); padding: 30px; border-radius: 15px; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-top: 4px solid var(--neon-blue); }
+        .login-card { background: var(--surface-color); padding: 30px; border-radius: 15px; width: 100%; max-width: 400px; border-top: 4px solid var(--neon-blue); }
         .login-card h1 { text-align: center; margin-bottom: 20px; font-style: italic; letter-spacing: 2px; }
 
-        /* App Layout */
-        .header { background: var(--surface-color); padding: 15px; text-align: center; border-bottom: 2px solid var(--neon-green); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center;}
+        .header { background: var(--surface-color); padding: 15px; text-align: center; border-bottom: 2px solid var(--neon-green); font-weight: bold; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;}
         .logout-btn { background: none; border: none; color: var(--danger); font-weight: bold; cursor: pointer; }
         
         .nav-tabs { display: flex; background: #1a1a1a; }
         .nav-tab { flex: 1; padding: 15px 0; text-align: center; cursor: pointer; border-bottom: 3px solid transparent; font-weight: bold; color: var(--text-muted); }
         .nav-tab.active { border-bottom-color: var(--neon-blue); color: var(--neon-blue); }
-
         .tab-content { display: none; flex: 1; padding: 15px; flex-direction: column; height: calc(100vh - 120px); overflow-y: auto;}
         .tab-content.active { display: flex; }
 
-        /* Map Container */
-        .map-container { flex: 1; min-height: 300px; border-radius: 12px; overflow: hidden; border: 2px solid #333; margin-bottom: 15px; z-index: 1;}
+        .map-container { flex: 1; min-height: 250px; border-radius: 12px; overflow: hidden; border: 2px solid #333; margin-bottom: 15px; z-index: 1;}
         
-        /* Chat UI */
         .chat-container { display: flex; flex-direction: column; flex: 1; background: var(--surface-color); border-radius: 12px; border: 1px solid #333; overflow: hidden;}
         .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 14px; word-wrap: break-word;}
+        .msg { max-width: 85%; padding: 10px 15px; border-radius: 15px; font-size: 14px; word-wrap: break-word;}
         .msg.admin { align-self: flex-start; background: #2a2a2a; border-left: 3px solid var(--neon-blue); border-bottom-left-radius: 2px;}
         .msg.team { align-self: flex-end; background: #1a3a1a; border-right: 3px solid var(--neon-green); border-bottom-right-radius: 2px;}
-        .chat-input { display: flex; padding: 10px; background: #1a1a1a; }
-        .chat-input input { margin-bottom: 0; border-radius: 20px 0 0 20px; border-right: none; }
-        .chat-input button { width: 80px; border-radius: 0 20px 20px 0; }
+        .msg img, .msg video, .msg audio { max-width: 100%; border-radius: 8px; margin-top: 5px; }
+        
+        .chat-input { display: flex; padding: 10px; background: #1a1a1a; gap: 5px; align-items: center;}
+        .chat-input input[type="text"] { margin-bottom: 0; flex: 1; }
+        .icon-btn { width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; padding: 0; font-size: 18px; border-radius: 8px; }
+        .recording { background: var(--danger) !important; color: white !important; box-shadow: 0 0 15px red; animation: pulse 1s infinite; }
 
-        /* Manage Teams List */
         .team-card { background: #2a2a2a; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 4px solid var(--text-muted); }
         .team-card.active-status { border-left-color: var(--neon-green); }
+        .team-card.sos-active { border-left-color: var(--danger); background: #3a0000; animation: pulse 1s infinite;}
         .team-info { display: flex; align-items: center; gap: 15px; }
         .team-avatar { width: 40px; height: 40px; border-radius: 50%; background: #444; display: flex; align-items: center; justify-content: center; font-weight: bold; overflow: hidden;}
         .team-avatar img { width: 100%; height: 100%; object-fit: cover; }
         
-        /* Custom Leaflet Marker */
-        .custom-marker { background: var(--surface-color); border: 2px solid var(--neon-green); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #fff; font-size: 12px; box-shadow: 0 0 10px rgba(57,255,20,0.5); overflow: hidden; }
+        .custom-marker { background: var(--surface-color); border: 2px solid var(--neon-green); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #fff; font-size: 12px; overflow: hidden; }
         .custom-marker img { width: 100%; height: 100%; object-fit: cover; }
+        .marker-sos { border-color: var(--danger); box-shadow: 0 0 15px var(--danger); animation: pulse 1s infinite; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        /* SOS Overlay for Admin */
+        #admin-sos-alert { display: none; position: fixed; top: 0; left: 0; width: 100%; padding: 20px; background: var(--danger); color: white; text-align: center; font-weight: bold; font-size: 20px; z-index: 9999; box-shadow: 0 5px 20px rgba(255,0,0,0.8);}
     </style>
 </head>
 <body>
+
+    <div id="admin-sos-alert">🚨 EMERGENCY: TEAM SOS TRIGGERED 🚨</div>
 
     <!-- LOGIN SCREEN -->
     <div id="login-screen" class="screen active">
@@ -102,21 +101,16 @@
                 <option value="participant">Participant Team</option>
                 <option value="admin">Administrator</option>
             </select>
-            
-            <div id="participant-fields">
-                <input type="text" id="team-name" placeholder="Enter Team Name">
-            </div>
-            
+            <div id="participant-fields"><input type="text" id="team-name" placeholder="Enter Team Name"></div>
             <input type="password" id="login-password" placeholder="PIN / Password">
-            
-            <button class="btn-neon" onclick="handleLogin()">Enter Dashboard</button>
+            <button class="btn-neon" style="width:100%" onclick="handleLogin()">Enter Dashboard</button>
         </div>
     </div>
 
     <!-- ADMIN SCREEN -->
     <div id="admin-screen" class="screen">
         <div class="header">
-            <span>Admin Command Center</span>
+            <span>Command Center</span>
             <button class="logout-btn" onclick="logout()">LOGOUT</button>
         </div>
         <div class="nav-tabs">
@@ -125,34 +119,24 @@
             <div class="nav-tab" onclick="switchAdminTab('manage')">Teams</div>
         </div>
 
-        <!-- Admin Map Tab -->
-        <div id="admin-map-tab" class="tab-content active">
-            <div id="admin-map" class="map-container"></div>
-        </div>
+        <div id="admin-map-tab" class="tab-content active"><div id="admin-map" class="map-container"></div></div>
 
-        <!-- Admin Chat Tab -->
         <div id="admin-chat-tab" class="tab-content">
-            <select id="admin-chat-selector" onchange="loadAdminChat()">
-                <option value="">Select a team to contact...</option>
-            </select>
+            <select id="admin-chat-selector" onchange="loadAdminChat()"><option value="">Select a team to contact...</option></select>
             <div class="chat-container">
                 <div id="admin-chat-messages" class="chat-messages"></div>
                 <div class="chat-input">
                     <input type="text" id="admin-msg-input" placeholder="Transmit message..." onkeypress="if(event.key === 'Enter') sendAdminMessage()">
-                    <button class="btn-neon btn-blue" onclick="sendAdminMessage()">SEND</button>
+                    <button class="btn-neon btn-blue" style="width:auto" onclick="sendAdminMessage()">SEND</button>
                 </div>
             </div>
         </div>
 
-        <!-- Admin Manage Tab -->
         <div id="admin-manage-tab" class="tab-content">
             <h3>Register New Team</h3>
             <input type="text" id="new-team-name" placeholder="Team Name">
             <input type="text" id="new-team-pin" placeholder="Assign PIN">
-            <label style="font-size: 12px; color: var(--text-muted);">Team Photo (Auto-compressed):</label>
-            <input type="file" id="new-team-photo" accept="image/*">
-            <button class="btn-neon" style="margin-bottom: 20px;" onclick="registerTeam()">Add Team</button>
-            
+            <button class="btn-neon" style="margin-bottom: 20px; width:100%" onclick="registerTeam()">Add Team</button>
             <h3>Active Rosters</h3>
             <div id="teams-list"></div>
         </div>
@@ -166,22 +150,27 @@
         </div>
         
         <div style="padding: 15px; display: flex; flex-direction: column; height: calc(100vh - 55px);">
-            <div id="participant-map" class="map-container" style="flex: 0.4;"></div>
+            <button class="btn-neon btn-danger" style="margin-bottom: 10px; width: 100%; font-size: 18px;" onclick="triggerSOS()">🚨 PRESS FOR SOS EMERGENCY 🚨</button>
+            <div id="participant-map" class="map-container" style="flex: 0.35;"></div>
             
-            <div class="chat-container" style="flex: 0.6;">
-                <div style="padding: 10px; background: #1a1a1a; font-size: 12px; text-align: center; color: var(--neon-green);">SECURE LINE TO HQ</div>
+            <div class="chat-container" style="flex: 0.65;">
+                <div style="padding: 10px; background: #1a1a1a; font-size: 12px; text-align: center; color: var(--neon-green);" id="upload-status">SECURE LINE TO HQ</div>
                 <div id="team-chat-messages" class="chat-messages"></div>
                 <div class="chat-input">
-                    <input type="text" id="team-msg-input" placeholder="Message Admin..." onkeypress="if(event.key === 'Enter') sendTeamMessage()">
-                    <button class="btn-neon" onclick="sendTeamMessage()">SEND</button>
+                    <input type="file" id="media-upload" accept="image/*,video/*" style="display:none" onchange="handleFileUpload(event)">
+                    <button class="btn-neon icon-btn" onclick="document.getElementById('media-upload').click()">📷</button>
+                    <button class="btn-neon icon-btn" id="mic-btn" onmousedown="startVoiceRecord()" onmouseup="stopVoiceRecord()" ontouchstart="startVoiceRecord()" ontouchend="stopVoiceRecord()">🎤</button>
+                    <input type="text" id="team-msg-input" placeholder="Message..." onkeypress="if(event.key === 'Enter') sendTeamMessage()">
+                    <button class="btn-neon" style="width: auto;" onclick="sendTeamMessage()">➤</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Firebase SDK (Compat) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
@@ -198,207 +187,140 @@
             appId: "1:741411391079:web:7fa055e95165aecf8536c2",
             measurementId: "G-RS3Z9F0KBK"
         };
-        // Initialize safely
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const storage = firebase.storage();
 
-        // ==========================================
-        // 2. GLOBAL STATE & UTILITIES
-        // ==========================================
-        let currentUserRole = null;
-        let currentTeamId = null;
-        let adminMap, participantMap;
-        let activeMarkers = {}; 
-        let chatUnsubscribe = null;
-        let gpsWatchId = null;
+        let currentUserRole = null, currentTeamId = null;
+        let adminMap, participantMap, activeMarkers = {}, chatUnsubscribe = null, gpsWatchId = null;
+        
+        // Audio/Siren Context for Admin SOS
+        let audioCtx;
+        function playAdminSiren() {
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            setTimeout(() => osc.stop(), 1000);
+        }
+
+        // Voice Recording Variables
+        let mediaRecorder, audioChunks = [];
 
         function throttle(func, limit) {
             let inThrottle;
             return function() {
-                const args = arguments;
-                const context = this;
-                if (!inThrottle) {
-                    func.apply(context, args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, limit);
-                }
-            }
-        }
-
-        async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    await navigator.wakeLock.request('screen');
-                    console.log('Wake Lock active');
-                }
-            } catch (err) {
-                console.warn(`Wake Lock error: ${err.message}`);
-            }
-        }
-
-        // Strict client-side compression to protect Firestore limits
-        function compressImage(file, callback) {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = event => {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 80; // Small size for fast map rendering
-                    const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    callback(canvas.toDataURL('image/jpeg', 0.5)); // Heavy compression
-                }
+                const args = arguments, context = this;
+                if (!inThrottle) { func.apply(context, args); inThrottle = true; setTimeout(() => inThrottle = false, limit); }
             }
         }
 
         function toggleLoginFields() {
-            const role = document.getElementById('login-role').value;
-            document.getElementById('participant-fields').style.display = role === 'participant' ? 'block' : 'none';
+            document.getElementById('participant-fields').style.display = document.getElementById('login-role').value === 'participant' ? 'block' : 'none';
         }
 
         // ==========================================
-        // 3. AUTHENTICATION LOGIC
+        // AUTHENTICATION
         // ==========================================
         async function handleLogin() {
             const role = document.getElementById('login-role').value;
             const password = document.getElementById('login-password').value;
 
-            try {
-                if (role === 'admin') {
-                    if (password === 'admin123') { 
-                        currentUserRole = 'admin';
-                        document.getElementById('login-screen').classList.remove('active');
-                        document.getElementById('admin-screen').classList.add('active');
-                        initAdmin();
-                    } else {
-                        alert('Invalid Admin Password');
-                    }
-                } else {
-                    const teamName = document.getElementById('team-name').value.trim();
-                    if (!teamName || !password) return alert('Enter Team Name and PIN');
-
-                    const teamRef = db.collection('teams').doc(teamName.replace(/\s+/g, '-').toLowerCase());
-                    const doc = await teamRef.get();
-
-                    if (doc.exists) {
-                        if (doc.data().pin !== password) return alert('Incorrect Team PIN');
-                    } else {
-                        // Auto-register
-                        await teamRef.set({ name: teamName, pin: password, status: 'active', lat: 0, lng: 0 });
-                    }
-
-                    currentTeamId = teamRef.id;
-                    currentUserRole = 'participant';
-                    document.getElementById('p-team-display').innerText = `Team: ${teamName}`;
-                    
+            if (role === 'admin') {
+                if (password === 'admin123') { 
+                    currentUserRole = 'admin';
                     document.getElementById('login-screen').classList.remove('active');
-                    document.getElementById('participant-screen').classList.add('active');
-                    
-                    initParticipant();
-                    requestWakeLock();
-                }
-            } catch (error) {
-                console.error("Login Error:", error);
-                alert("Database connection error. Please check your internet connection.");
+                    document.getElementById('admin-screen').classList.add('active');
+                    initAdmin();
+                } else alert('Invalid Admin Password');
+            } else {
+                const teamName = document.getElementById('team-name').value.trim();
+                if (!teamName || !password) return alert('Enter Team Name and PIN');
+                const teamRef = db.collection('teams').doc(teamName.replace(/\s+/g, '-').toLowerCase());
+                const doc = await teamRef.get();
+
+                if (doc.exists) { if (doc.data().pin !== password) return alert('Incorrect PIN'); } 
+                else await teamRef.set({ name: teamName, pin: password, status: 'active', sos: false, lat: 0, lng: 0 });
+
+                currentTeamId = teamRef.id;
+                currentUserRole = 'participant';
+                document.getElementById('p-team-display').innerText = `Team: ${teamName}`;
+                
+                document.getElementById('login-screen').classList.remove('active');
+                document.getElementById('participant-screen').classList.add('active');
+                
+                initParticipant();
             }
         }
 
-        function logout() {
-            if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
-            if (chatUnsubscribe) chatUnsubscribe();
-            location.reload();
-        }
+        function logout() { location.reload(); }
+
+        const DEFAULT_COORDS = [10.3157, 123.8854];
 
         // ==========================================
-        // 4. MAP INITIALIZATION 
-        // ==========================================
-        const DEFAULT_COORDS = [10.3157, 123.8854]; // Cebu City default
-
-        function createCustomIcon(teamData) {
-            let innerHtml = teamData.avatarBase64 
-                ? `<img src="${teamData.avatarBase64}">` 
-                : teamData.name.substring(0, 2).toUpperCase();
-            
-            return L.divIcon({
-                className: 'custom-marker',
-                html: innerHtml,
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
-            });
-        }
-
-        // ==========================================
-        // 5. ADMIN LOGIC
+        // ADMIN LOGIC & SOS MONITORING
         // ==========================================
         function initAdmin() {
             adminMap = L.map('admin-map').setView(DEFAULT_COORDS, 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19, attribution: '© OpenStreetMap'
-            }).addTo(adminMap);
-            
-            // Force map to recalculate size in case container was hidden
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(adminMap);
             setTimeout(() => { adminMap.invalidateSize(); }, 200);
 
             db.collection('teams').onSnapshot(snapshot => {
                 const teamSelector = document.getElementById('admin-chat-selector');
                 const teamsList = document.getElementById('teams-list');
-                
-                // Preserve current selection
                 const currentSelection = teamSelector.value;
                 
                 teamSelector.innerHTML = '<option value="">Select a team to contact...</option>';
                 teamsList.innerHTML = '';
+                let isSosActive = false;
 
                 snapshot.docChanges().forEach(change => {
                     const team = change.doc.data();
                     const tId = change.doc.id;
 
+                    // SOS Sound & Visual Alert
+                    if (team.sos) {
+                        isSosActive = true;
+                        playAdminSiren();
+                    }
+
                     if (team.lat && team.lng) {
-                        const latLng = [team.lat, team.lng];
+                        let innerHtml = team.avatarBase64 ? `<img src="${team.avatarBase64}">` : team.name.substring(0, 2).toUpperCase();
+                        let iconClass = team.sos ? 'custom-marker marker-sos' : 'custom-marker';
+                        let icon = L.divIcon({ className: iconClass, html: innerHtml, iconSize: [30, 30] });
+
                         if (change.type === 'added' || change.type === 'modified') {
                             if (activeMarkers[tId]) {
-                                activeMarkers[tId].setLatLng(latLng);
-                                activeMarkers[tId].setIcon(createCustomIcon(team));
+                                activeMarkers[tId].setLatLng([team.lat, team.lng]);
+                                activeMarkers[tId].setIcon(icon);
                             } else {
-                                activeMarkers[tId] = L.marker(latLng, {icon: createCustomIcon(team)})
-                                    .addTo(adminMap).bindPopup(`<b>${team.name}</b>`);
+                                activeMarkers[tId] = L.marker([team.lat, team.lng], {icon: icon}).addTo(adminMap).bindPopup(`<b>${team.name}</b>`);
                             }
                         }
                     }
-                    if (change.type === 'removed' && activeMarkers[tId]) {
-                        adminMap.removeLayer(activeMarkers[tId]);
-                        delete activeMarkers[tId];
-                    }
                 });
 
-                // Re-render full list for UI
+                document.getElementById('admin-sos-alert').style.display = isSosActive ? 'block' : 'none';
+
                 snapshot.forEach(doc => {
-                    const team = doc.data();
-                    const tId = doc.id;
-                    
-                    teamSelector.innerHTML += `<option value="${tId}">${team.name}</option>`;
+                    const team = doc.data(), tId = doc.id;
+                    teamSelector.innerHTML += `<option value="${tId}">${team.sos ? '🚨 ' : ''}${team.name}</option>`;
                     teamsList.innerHTML += `
-                        <div class="team-card ${team.status === 'active' ? 'active-status' : ''}">
+                        <div class="team-card ${team.sos ? 'sos-active' : ''}">
                             <div class="team-info">
                                 <div class="team-avatar">${team.avatarBase64 ? `<img src="${team.avatarBase64}">` : team.name.substring(0,2).toUpperCase()}</div>
                                 <div>
                                     <strong>${team.name}</strong><br>
-                                    <small style="color:var(--text-muted)">PIN: ${team.pin}</small>
+                                    ${team.sos ? `<button class="btn-neon btn-danger" style="padding: 2px 8px; font-size:10px" onclick="clearSOS('${tId}')">CLEAR SOS</button>` : `<small style="color:var(--text-muted)">PIN: ${team.pin}</small>`}
                                 </div>
                             </div>
-                            <button class="btn-neon" style="width:auto; padding: 5px 10px; font-size:12px;" onclick="deleteTeam('${tId}')">X</button>
-                        </div>
-                    `;
+                        </div>`;
                 });
-                
-                // Restore selection
                 if(currentSelection) teamSelector.value = currentSelection;
             });
         }
@@ -406,100 +328,121 @@
         function switchAdminTab(tabName) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
             event.target.classList.add('active');
             document.getElementById(`admin-${tabName}-tab`).classList.add('active');
-            
-            // Crucial fix: Leaflet needs to know if its container size changed
-            if (tabName === 'map') {
-                setTimeout(() => { adminMap.invalidateSize(); }, 100);
-            }
+            if (tabName === 'map') setTimeout(() => { adminMap.invalidateSize(); }, 100);
         }
 
         function registerTeam() {
             const name = document.getElementById('new-team-name').value;
             const pin = document.getElementById('new-team-pin').value;
-            const fileInput = document.getElementById('new-team-photo');
-            
             if (!name || !pin) return alert("Name and PIN required");
-            const tId = name.replace(/\s+/g, '-').toLowerCase();
-
-            const saveToDb = (avatarData) => {
-                db.collection('teams').doc(tId).set({
-                    name: name, pin: pin, status: 'active', lat: null, lng: null,
-                    avatarBase64: avatarData || null
-                }).then(() => {
-                    document.getElementById('new-team-name').value = '';
-                    document.getElementById('new-team-pin').value = '';
-                    fileInput.value = '';
-                    alert("Team Registered Successfully");
-                }).catch(err => {
-                    alert("Failed to save: " + err.message);
-                });
-            };
-
-            if (fileInput.files.length > 0) compressImage(fileInput.files[0], saveToDb);
-            else saveToDb(null);
+            db.collection('teams').doc(name.replace(/\s+/g, '-').toLowerCase()).set({
+                name: name, pin: pin, status: 'active', sos: false, lat: null, lng: null
+            }).then(() => alert("Team Registered"));
         }
 
-        function deleteTeam(id) {
-            if(confirm("Remove this team permanently?")) db.collection('teams').doc(id).delete();
+        function clearSOS(teamId) {
+            db.collection('teams').doc(teamId).update({ sos: false });
         }
 
         // ==========================================
-        // 6. PARTICIPANT LOGIC 
+        // PARTICIPANT LOGIC & SOS
         // ==========================================
         const updateLocationThrottled = throttle((lat, lng) => {
-            db.collection("teams").doc(currentTeamId).update({ lat: lat, lng: lng })
-              .catch(err => console.warn("Background sync failed", err));
+            db.collection("teams").doc(currentTeamId).update({ lat: lat, lng: lng });
         }, 5000); 
 
         function initParticipant() {
             participantMap = L.map('participant-map').setView(DEFAULT_COORDS, 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(participantMap);
-            
             setTimeout(() => { participantMap.invalidateSize(); }, 200);
 
             let myMarker = null;
-
             if (navigator.geolocation) {
                 gpsWatchId = navigator.geolocation.watchPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        
-                        if (!myMarker) {
-                            myMarker = L.marker([lat, lng]).addTo(participantMap);
-                        } else {
-                            myMarker.setLatLng([lat, lng]);
-                        }
+                    pos => {
+                        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                        if (!myMarker) myMarker = L.marker([lat, lng]).addTo(participantMap);
+                        else myMarker.setLatLng([lat, lng]);
                         participantMap.panTo([lat, lng]);
                         updateLocationThrottled(lat, lng);
                     },
-                    (error) => {
-                        console.error("GPS Error:", error);
-                        // Optional user alert for denied permissions
-                        if(error.code === 1) alert("Please enable Location Services to participate.");
-                    },
-                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+                    err => console.error("GPS Error"), { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
                 );
-            } else {
-                alert("Your browser does not support GPS tracking.");
             }
-
             initChatStream(currentTeamId, 'team-chat-messages');
         }
 
+        function triggerSOS() {
+            if(confirm("🚨 Trigger Emergency SOS Protocol? This will immediately alert the Command Center!")) {
+                db.collection("teams").doc(currentTeamId).update({ sos: true, sosTime: firebase.firestore.FieldValue.serverTimestamp() });
+                db.collection('chats').doc(currentTeamId).collection('messages').add({
+                    sender: 'team', text: "🚨 EMERGENCY SOS TRIGGERED! IMMEDIATE ASSISTANCE REQUIRED! 🚨", type: 'text', timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        }
+
         // ==========================================
-        // 7. DUAL CHAT SYSTEM
+        // MULTIMEDIA CHAT SYSTEM
         // ==========================================
+        function setStatus(text, color="var(--neon-green)") {
+            const el = document.getElementById('upload-status');
+            if(el) { el.innerText = text; el.style.color = color; }
+        }
+
+        async function uploadMedia(file, typePrefix) {
+            setStatus("UPLOADING MEDIA...", "orange");
+            const fileName = `${typePrefix}_${Date.now()}_${file.name || 'audio.webm'}`;
+            const fileRef = storage.ref(`chats/${currentTeamId}/${fileName}`);
+            await fileRef.put(file);
+            const url = await fileRef.getDownloadURL();
+            
+            let msgType = 'text';
+            if (file.type.startsWith('image/')) msgType = 'image';
+            else if (file.type.startsWith('video/')) msgType = 'video';
+            else if (file.type.startsWith('audio/')) msgType = 'audio';
+
+            await db.collection('chats').doc(currentTeamId).collection('messages').add({
+                sender: 'team', text: "Media attached", url: url, type: msgType, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            setStatus("SECURE LINE TO HQ", "var(--neon-green)");
+        }
+
+        // Handle Photo/Video selection
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) uploadMedia(file, 'file');
+        }
+
+        // Handle Voice Memos
+        async function startVoiceRecord() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(track => track.stop()); // release mic
+                    await uploadMedia(audioBlob, 'voice');
+                };
+                mediaRecorder.start();
+                document.getElementById('mic-btn').classList.add('recording');
+                setStatus("RECORDING VOICE MEMO...", "red");
+            } catch (e) { alert("Microphone access denied."); }
+        }
+
+        function stopVoiceRecord() {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                document.getElementById('mic-btn').classList.remove('recording');
+            }
+        }
+
         function loadAdminChat() {
             const teamId = document.getElementById('admin-chat-selector').value;
-            if (!teamId) {
-                document.getElementById('admin-chat-messages').innerHTML = '';
-                if (chatUnsubscribe) chatUnsubscribe();
-                return;
-            }
+            if (!teamId) { document.getElementById('admin-chat-messages').innerHTML = ''; if (chatUnsubscribe) chatUnsubscribe(); return; }
             initChatStream(teamId, 'admin-chat-messages');
         }
 
@@ -508,16 +451,21 @@
             const container = document.getElementById(containerId);
             
             chatUnsubscribe = db.collection('chats').doc(targetTeamId).collection('messages')
-                .orderBy('timestamp', 'asc')
-                .onSnapshot(snapshot => {
+                .orderBy('timestamp', 'asc').onSnapshot(snapshot => {
                     container.innerHTML = '';
                     snapshot.forEach(doc => {
                         const msg = doc.data();
                         const cssClass = msg.sender === 'admin' ? 'admin' : 'team';
                         const label = msg.sender === 'admin' ? 'HQ' : 'Team';
-                        container.innerHTML += `<div class="msg ${cssClass}"><b>${label}:</b> ${msg.text}</div>`;
+                        
+                        let mediaHtml = '';
+                        if (msg.type === 'image') mediaHtml = `<img src="${msg.url}" onclick="window.open('${msg.url}')">`;
+                        else if (msg.type === 'video') mediaHtml = `<video src="${msg.url}" controls playsinline></video>`;
+                        else if (msg.type === 'audio') mediaHtml = `<audio src="${msg.url}" controls></audio>`;
+                        else mediaHtml = msg.text;
+
+                        container.innerHTML += `<div class="msg ${cssClass}"><b>${label}:</b><br>${mediaHtml}</div>`;
                     });
-                    // Auto scroll to bottom
                     container.scrollTop = container.scrollHeight;
                 });
         }
@@ -526,24 +474,14 @@
             const teamId = document.getElementById('admin-chat-selector').value;
             const text = document.getElementById('admin-msg-input').value.trim();
             if (!teamId || !text) return;
-            
-            db.collection('chats').doc(teamId).collection('messages').add({
-                sender: 'admin', 
-                text: text, 
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            db.collection('chats').doc(teamId).collection('messages').add({ sender: 'admin', text: text, type: 'text', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
             document.getElementById('admin-msg-input').value = '';
         }
 
         function sendTeamMessage() {
             const text = document.getElementById('team-msg-input').value.trim();
             if (!text) return;
-            
-            db.collection('chats').doc(currentTeamId).collection('messages').add({
-                sender: 'team', 
-                text: text, 
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            db.collection('chats').doc(currentTeamId).collection('messages').add({ sender: 'team', text: text, type: 'text', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
             document.getElementById('team-msg-input').value = '';
         }
     </script>
