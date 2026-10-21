@@ -86,7 +86,7 @@
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
         ::-webkit-scrollbar-thumb { background: #00F0FF; border-radius: 2px; }
 
-        #admin-map { height: 100%; width: 100%; z-index: 1; background: #0A0A0C;}
+        #admin-map, #participant-map { height: 100%; width: 100%; z-index: 1; background: #0A0A0C;}
         
         .leaflet-popup-content-wrapper { background: #141418; color: white; border: 1px solid #00F0FF; border-radius: 0; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3); }
         .leaflet-popup-tip { background: #141418; border: 1px solid #00F0FF; }
@@ -131,7 +131,7 @@
         </div>
     </header>
 
-    <!-- HQ Emergency Banner (Hidden by default, flashes when SOS triggered) -->
+    <!-- HQ Emergency Banner -->
     <div id="hq-emergency-banner" class="hidden bg-red-600 text-white px-4 py-2 font-sport text-center uppercase tracking-widest z-50 flex items-center justify-center gap-4 animate-pulse">
         <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
         <span id="emergency-banner-text">EMERGENCY SOS BEACON RECEIVED FROM TEAM</span>
@@ -219,13 +219,14 @@
 
         <!-- Participant Dashboard -->
         <div id="participant-screen" class="hidden h-full w-full flex flex-col relative z-10">
-            <div class="bg-black border-b border-neon-volt/30 p-4 shrink-0 flex items-center justify-between relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-r from-neon-volt/10 to-transparent"></div>
+            <!-- Info Bar -->
+            <div class="bg-black border-b border-gray-800 p-4 shrink-0 flex items-center justify-between relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-neon-volt/5 to-transparent"></div>
                 <div class="flex items-center gap-4 relative z-10">
                     <div id="participant-avatar-display" class="h-14 w-14 cut-corner-sm bg-neon-volt text-black flex items-center justify-center font-sport text-2xl overflow-hidden border border-white glow-volt"></div>
                     <div>
-                        <h3 id="participant-team-name" class="font-sport text-2xl text-white uppercase italic">TEAM</h3>
-                        <div class="flex items-center gap-2 mt-1">
+                        <h3 id="participant-team-name" class="font-sport text-2xl text-white uppercase italic leading-none">TEAM</h3>
+                        <div class="flex items-center gap-2 mt-2">
                             <span class="relative flex h-3 w-3">
                               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-volt opacity-75"></span>
                               <span class="relative inline-flex rounded-full h-3 w-3 bg-neon-volt"></span>
@@ -234,18 +235,37 @@
                         </div>
                     </div>
                 </div>
-                <!-- SOS Emergency Trigger Button -->
                 <button onclick="app.triggerSOS()" class="relative z-10 bg-red-600 hover:bg-red-500 text-white font-sport px-4 py-3 cut-corner-sm border-2 border-white shadow-[0_0_15px_rgba(255,0,0,0.6)] animate-pulse flex items-center gap-2">
                     <i class="fa-solid fa-triangle-exclamation text-lg"></i>
-                    <span class="text-sm tracking-wider uppercase">SOS BEACON</span>
+                    <span class="text-sm tracking-wider uppercase hidden sm:inline">SOS BEACON</span>
+                </button>
+            </div>
+
+            <!-- Participant Main Tabs -->
+            <div class="flex bg-black shrink-0 font-tech tracking-wider uppercase text-sm border-b border-gray-800 relative z-20 shadow-lg">
+                <button onclick="app.switchParticipantMainTab('map')" id="p-main-tab-map" class="flex-1 py-3 border-b-2 border-neon-volt text-neon-volt bg-neon-volt/10 transition-colors">
+                    <i class="fa-solid fa-map-location-dot mr-2"></i>My Live Map
+                </button>
+                <button onclick="app.switchParticipantMainTab('comms')" id="p-main-tab-comms" class="flex-1 py-3 border-b-2 border-transparent text-gray-500 hover:text-white transition-colors">
+                    <i class="fa-solid fa-satellite-dish mr-2"></i>Comms Terminal
                 </button>
             </div>
             
-            <div class="flex-1 flex flex-col bg-neon-panel relative border-t-4 border-black">
-                <!-- Dual Chat Tabs for Participant -->
-                <div class="flex bg-black shrink-0 font-tech tracking-wider uppercase text-sm">
-                    <button onclick="app.switchParticipantTab('private')" id="tab-private" class="flex-1 py-3 border-b-2 border-neon-blue text-neon-blue transition-colors bg-neon-blue/10"><i class="fa-solid fa-walkie-talkie mr-2"></i>HQ Direct</button>
-                    <button onclick="app.switchParticipantTab('group')" id="tab-group" class="flex-1 py-3 border-b-2 border-transparent text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-earth-americas mr-2"></i>Global Comm</button>
+            <!-- Participant MAP View -->
+            <div id="participant-view-map" class="flex-1 relative flex flex-col bg-neon-panel">
+                <div id="participant-map" class="h-full w-full"></div>
+                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-[400] glass-panel px-6 py-2 cut-corner-sm border border-neon-volt/50 pointer-events-none text-center shadow-[0_0_15px_rgba(204,255,0,0.2)]">
+                    <p class="text-[10px] font-tech text-gray-400 tracking-widest uppercase mb-1">My Active Coordinates</p>
+                    <p id="p-coords-display" class="text-lg font-tech text-neon-volt font-bold">ACQUIRING SIGNAL...</p>
+                </div>
+            </div>
+
+            <!-- Participant COMMS View -->
+            <div id="participant-view-comms" class="hidden flex-1 flex-col bg-neon-panel relative border-t-4 border-black">
+                <!-- Dual Chat Tabs -->
+                <div class="flex bg-black shrink-0 font-tech tracking-wider uppercase text-xs">
+                    <button onclick="app.switchParticipantChatTab('private')" id="p-chat-tab-private" class="flex-1 py-2 border-b border-neon-blue text-neon-blue transition-colors bg-neon-blue/5"><i class="fa-solid fa-walkie-talkie mr-2"></i>HQ Direct</button>
+                    <button onclick="app.switchParticipantChatTab('group')" id="p-chat-tab-group" class="flex-1 py-2 border-b border-transparent text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-earth-americas mr-2"></i>Global Comm</button>
                 </div>
 
                 <div id="participant-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"></div>
@@ -294,7 +314,6 @@
                     <div class="p-4 border-b border-gray-800 shrink-0 bg-neon-panel relative overflow-hidden">
                         <div class="absolute inset-0 bg-gradient-to-r from-neon-pink/10 to-transparent"></div>
                         <h3 class="font-sport text-white text-lg uppercase italic mb-3 relative z-10"><i class="fa-solid fa-tower-broadcast text-neon-pink mr-2"></i>HQ Comms</h3>
-                        <!-- Dual Chat Dropdown for Admin -->
                         <select id="admin-chat-select" onchange="app.switchAdminChat(this.value)" class="relative z-10 bg-black text-neon-blue font-tech tracking-wider text-sm cut-corner-sm px-3 py-2 border border-gray-700 focus:outline-none focus:border-neon-pink w-full appearance-none">
                             <option value="group">📢 ALL TEAMS BROADCAST (GROUP CHAT)</option>
                         </select>
@@ -491,7 +510,8 @@
 
         window.app = {
             db: null, auth: null, storage: null, userId: null, role: null, teamName: null, appId: null, teamDocId: null,
-            map: null, markers: {}, watchId: null, mapZoomedIn: false,
+            map: null, markers: {}, watchId: null, 
+            participantMap: null, participantMarker: null, participantMainTab: 'map',
             adminPasswordHash: 'admin123',
             allMessages: [], participantChatTab: 'private', adminChatTarget: 'group', participantsList: {}, 
             mediaRecorder: null, audioChunks: [], isRecording: false, activeEmergencyTeam: null,
@@ -537,9 +557,10 @@
                 }, { merge: true });
 
                 showScreen('participant-screen');
+                app.switchParticipantMainTab('map');
                 app.startTracking();
                 app.setupChat();
-                app.switchParticipantTab('private');
+                app.switchParticipantChatTab('private');
             },
 
             joinAsAdmin: () => {
@@ -572,6 +593,12 @@
                     app.watchId = null;
                 }
                 
+                if (app.participantMap) {
+                    app.participantMap.remove();
+                    app.participantMap = null;
+                    app.participantMarker = null;
+                }
+
                 app.role = null;
                 app.teamName = null;
                 app.teamDocId = null;
@@ -645,6 +672,27 @@
                     async (position) => {
                         const { latitude, longitude } = position.coords;
                         updateStatus('LINK ACTIVE');
+                        
+                        document.getElementById('p-coords-display').innerText = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+
+                        if (app.role === 'participant') {
+                            if (!app.participantMap) {
+                                app.participantMap = L.map('participant-map', { zoomControl: false }).setView([latitude, longitude], 17);
+                                L.control.zoom({ position: 'bottomright' }).addTo(app.participantMap);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(app.participantMap);
+                                
+                                const pIcon = L.divIcon({
+                                    className: 'custom-div-icon',
+                                    html: `<div class="border-neon-volt bg-neon-volt glow-volt rounded-full h-6 w-6 flex items-center justify-center border-2 shadow-[0_0_15px_#CCFF00]"><div class="bg-black h-2 w-2 rounded-full"></div></div>`,
+                                    iconSize: [24, 24], iconAnchor: [12, 12]
+                                });
+                                app.participantMarker = L.marker([latitude, longitude], {icon: pIcon}).addTo(app.participantMap);
+                            } else {
+                                app.participantMarker.setLatLng([latitude, longitude]);
+                                app.participantMap.setView([latitude, longitude]); 
+                            }
+                        }
+
                         if(app.userId && app.db) {
                             try { await setDoc(myRef, { lat: latitude, lng: longitude, lastUpdated: serverTimestamp() }, { merge: true }); } 
                             catch(e) { console.error("Telemetry sync error:", e); }
@@ -754,6 +802,31 @@
                 activeBtn.classList.add('border-neon-pink', 'text-neon-pink', 'bg-neon-pink/10');
 
                 if (tabId === 'dashboard' && app.map) setTimeout(() => app.map.invalidateSize(), 200);
+            },
+
+            switchParticipantMainTab: (tab) => {
+                app.participantMainTab = tab;
+                const tabM = document.getElementById('p-main-tab-map');
+                const tabC = document.getElementById('p-main-tab-comms');
+                const viewM = document.getElementById('participant-view-map');
+                const viewC = document.getElementById('participant-view-comms');
+
+                if (tab === 'map') {
+                    tabM.className = "flex-1 py-3 border-b-2 border-neon-volt text-neon-volt bg-neon-volt/10 transition-colors";
+                    tabC.className = "flex-1 py-3 border-b-2 border-transparent text-gray-500 hover:text-white transition-colors";
+                    viewM.classList.remove('hidden');
+                    viewM.classList.add('flex');
+                    viewC.classList.add('hidden');
+                    viewC.classList.remove('flex');
+                    if (app.participantMap) setTimeout(() => app.participantMap.invalidateSize(), 200);
+                } else {
+                    tabC.className = "flex-1 py-3 border-b-2 border-neon-volt text-neon-volt bg-neon-volt/10 transition-colors";
+                    tabM.className = "flex-1 py-3 border-b-2 border-transparent text-gray-500 hover:text-white transition-colors";
+                    viewC.classList.remove('hidden');
+                    viewC.classList.add('flex');
+                    viewM.classList.add('hidden');
+                    viewM.classList.remove('flex');
+                }
             },
 
             createNewTeamManual: async () => {
@@ -888,19 +961,19 @@
                 if(currentValue === 'group' || app.participantsList[currentValue]) { select.value = currentValue; } else { app.switchAdminChat('group'); }
             },
 
-            switchParticipantTab: (tabName) => {
+            switchParticipantChatTab: (tabName) => {
                 app.participantChatTab = tabName;
-                const tabP = document.getElementById('tab-private');
-                const tabG = document.getElementById('tab-group');
+                const tabP = document.getElementById('p-chat-tab-private');
+                const tabG = document.getElementById('p-chat-tab-group');
                 const input = document.getElementById('participant-message-input');
 
                 if (tabName === 'private') {
-                    tabP.className = "flex-1 py-3 border-b-2 border-neon-blue text-neon-blue bg-neon-blue/10 transition-colors";
-                    tabG.className = "flex-1 py-3 border-b-2 border-transparent text-gray-500 hover:text-white transition-colors";
+                    tabP.className = "flex-1 py-2 border-b border-neon-blue text-neon-blue transition-colors bg-neon-blue/5";
+                    tabG.className = "flex-1 py-2 border-b border-transparent text-gray-500 hover:text-white transition-colors";
                     input.placeholder = "DIRECT TO HQ...";
                 } else {
-                    tabG.className = "flex-1 py-3 border-b-2 border-neon-volt text-neon-volt bg-neon-volt/10 transition-colors";
-                    tabP.className = "flex-1 py-3 border-b-2 border-transparent text-gray-500 hover:text-white transition-colors";
+                    tabG.className = "flex-1 py-2 border-b border-neon-volt text-neon-volt bg-neon-volt/5 transition-colors";
+                    tabP.className = "flex-1 py-2 border-b border-transparent text-gray-500 hover:text-white transition-colors";
                     input.placeholder = "GLOBAL TRANSMISSION...";
                 }
                 app.renderChat();
