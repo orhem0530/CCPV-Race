@@ -17,11 +17,11 @@
                 extend: {
                     colors: {
                         neon: {
-                            volt: '#CCFF00',   // High-vis yellow-green
-                            blue: '#00F0FF',   // Electric cyan
-                            pink: '#FF0055',   // Hot pink/red
-                            dark: '#0A0A0C',   // Deep space black
-                            panel: '#141418',  // Slightly lighter dark for panels
+                            volt: '#CCFF00',
+                            blue: '#00F0FF',
+                            pink: '#FF0055',
+                            dark: '#0A0A0C',
+                            panel: '#141418',
                         }
                     },
                     fontFamily: {
@@ -420,8 +420,8 @@
     <!-- Firebase Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         const showAlert = (title, message) => {
@@ -474,7 +474,7 @@
         };
 
         window.app = {
-            db: null, auth: null, storage: null, userId: null, role: null, teamName: null, appId: null,
+            db: null, auth: null, storage: null, userId: null, role: null, teamName: null, appId: null, teamDocId: null,
             map: null, markers: {}, watchId: null, mapZoomedIn: false,
             adminPasswordHash: 'admin123',
             allMessages: [], participantChatTab: 'private', adminChatTarget: 'group', participantsList: {}, 
@@ -494,8 +494,9 @@
                 }
 
                 let existingTeam = null;
+                let existingId = null;
                 for (const [id, team] of Object.entries(app.participantsList)) {
-                    if (team.name.toUpperCase() === nameInput) { existingTeam = team; break; }
+                    if (team.name.toUpperCase() === nameInput) { existingTeam = team; existingId = id; break; }
                 }
 
                 if (existingTeam) {
@@ -509,9 +510,11 @@
 
                 app.teamName = nameInput;
                 app.role = 'participant';
+                app.teamDocId = existingId || app.userId;
+
                 document.getElementById('participant-team-name').innerText = app.teamName;
                 
-                const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.userId);
+                const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.teamDocId);
                 await setDoc(myRef, {
                     name: app.teamName, pin: pinInput, status: 'active', lastUpdated: serverTimestamp()
                 }, { merge: true });
@@ -519,7 +522,7 @@
                 showScreen('participant-screen');
                 app.startTracking();
                 app.setupChat();
-                app.switchParticipantTab('private'); // Default to private
+                app.switchParticipantTab('private');
             },
 
             joinAsAdmin: () => {
@@ -530,6 +533,7 @@
                 }
                 app.role = 'admin';
                 app.teamName = 'COMMAND HQ';
+                app.teamDocId = app.userId;
                 showScreen('admin-screen');
                 app.initMap();
                 app.setupAdminTracking();
@@ -541,7 +545,7 @@
                 if (!navigator.geolocation) { showAlert('SYSTEM ERROR', 'GPS Telemetry not supported.'); return; }
                 updateStatus('ACQUIRING SATELLITE...');
 
-                const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.userId);
+                const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.teamDocId);
                 
                 onSnapshot(myRef, (docSnap) => {
                     if(docSnap.exists()){
@@ -584,7 +588,6 @@
 
             initMap: () => {
                 if(app.map) return;
-                // Centered directly on Cebu City Coordinates
                 app.map = L.map('admin-map', { zoomControl: false }).setView([10.3157, 123.8854], 14);
                 L.control.zoom({ position: 'bottomright' }).addTo(app.map);
                 
@@ -801,7 +804,7 @@
             },
 
             switchParticipantTab: (tabName) => {
-                app.participantChatTab = tabName; // 'private' or 'group'
+                app.participantChatTab = tabName;
                 const tabP = document.getElementById('tab-private');
                 const tabG = document.getElementById('tab-group');
                 const input = document.getElementById('participant-message-input');
@@ -819,7 +822,7 @@
             },
 
             switchAdminChat: (target) => {
-                app.adminChatTarget = target; // 'group' or participant ID
+                app.adminChatTarget = target;
                 document.getElementById('admin-chat-select').value = target;
                 document.getElementById('admin-message-input').placeholder = target === 'group' ? "GLOBAL TRANSMISSION..." : `DIRECT TO ${app.participantsList[target]?.name || "UNIT"}...`;
                 app.renderChat();
@@ -830,7 +833,6 @@
                 const container = document.getElementById(containerId);
                 container.innerHTML = '';
 
-                // Filter logic separating Group vs Private chats
                 let filtered = app.role === 'admin' 
                     ? app.allMessages.filter(m => 
                         (app.adminChatTarget === 'group' && m.chatType === 'group') || 
@@ -838,11 +840,11 @@
                       )
                     : app.allMessages.filter(m => 
                         (app.participantChatTab === 'group' && m.chatType === 'group') || 
-                        (app.participantChatTab === 'private' && m.chatType === 'private' && (m.targetParticipantId === app.userId || m.senderId === app.userId))
+                        (app.participantChatTab === 'private' && m.chatType === 'private' && (m.targetParticipantId === app.teamDocId || m.senderId === app.teamDocId))
                       );
 
                 filtered.forEach(msg => {
-                    const isMe = msg.senderId === app.userId;
+                    const isMe = msg.senderId === (app.role === 'admin' ? app.userId : app.teamDocId);
                     const isAdminMsg = msg.isAdmin;
                     
                     const wrapper = document.createElement('div');
@@ -898,10 +900,10 @@
                     input.value = '';
                     
                     let chatType = (app.role === 'admin' ? app.adminChatTarget : app.participantChatTab) === 'group' ? 'group' : 'private';
-                    let target = app.role === 'admin' ? (app.adminChatTarget === 'group' ? null : app.adminChatTarget) : (app.participantChatTab === 'group' ? null : app.userId);
+                    let target = app.role === 'admin' ? (app.adminChatTarget === 'group' ? null : app.adminChatTarget) : (app.participantChatTab === 'group' ? null : app.teamDocId);
                     
                     try {
-                        await addDoc(messagesRef, { senderId: app.userId, senderName: app.teamName, text: text, timestamp: serverTimestamp(), isAdmin: app.role === 'admin', chatType: chatType, targetParticipantId: target });
+                        await addDoc(messagesRef, { senderId: app.role === 'admin' ? app.userId : app.teamDocId, senderName: app.teamName, text: text, timestamp: serverTimestamp(), isAdmin: app.role === 'admin', chatType: chatType, targetParticipantId: target });
                     } catch(error) { showAlert("ERROR", "Transmission failed."); }
                 });
             },
@@ -955,12 +957,12 @@
 
                     const messagesRef = collection(app.db, 'artifacts', app.appId, 'public', 'data', 'messages');
                     let chatType = (role === 'admin' ? app.adminChatTarget : app.participantChatTab) === 'group' ? 'group' : 'private';
-                    let target = role === 'admin' ? (app.adminChatTarget === 'group' ? null : app.adminChatTarget) : (app.participantChatTab === 'group' ? null : app.userId);
+                    let target = role === 'admin' ? (app.adminChatTarget === 'group' ? null : app.adminChatTarget) : (app.participantChatTab === 'group' ? null : app.teamDocId);
                     
                     let fallbackText = type === 'audio' ? '🎤 Voice Memo' : (type === 'video' ? '📹 Video Message' : '🖼️ Image Attachment');
 
                     await addDoc(messagesRef, {
-                        senderId: app.userId, senderName: app.teamName, text: fallbackText, 
+                        senderId: role === 'admin' ? app.userId : app.teamDocId, senderName: app.teamName, text: fallbackText, 
                         timestamp: serverTimestamp(), isAdmin: role === 'admin', chatType: chatType, 
                         targetParticipantId: target, messageType: type, mediaUrl: url
                     });
@@ -977,14 +979,14 @@
             try {
                 app.appId = typeof __app_id !== 'undefined' ? __app_id : 'amazing-race-pro';
                 const firebaseConfig = {
-  apiKey: "AIzaSyCq2ns7RrHuW05e2L3wavFnrzUIHZ4bl74",
-  authDomain: "ccpv-amazing-race.firebaseapp.com",
-  projectId: "ccpv-amazing-race",
-  storageBucket: "ccpv-amazing-race.firebasestorage.app",
-  messagingSenderId: "741411391079",
-  appId: "1:741411391079:web:7fa055e95165aecf8536c2",
-  measurementId: "G-RS3Z9F0KBK"
-};
+                  apiKey: "AIzaSyCq2ns7RrHuW05e2L3wavFnrzUIHZ4bl74",
+                  authDomain: "ccpv-amazing-race.firebaseapp.com",
+                  projectId: "ccpv-amazing-race",
+                  storageBucket: "ccpv-amazing-race.firebasestorage.app",
+                  messagingSenderId: "741411391079",
+                  appId: "1:741411391079:web:7fa055e95165aecf8536c2",
+                  measurementId: "G-RS3Z9F0KBK"
+                };
 
                 if (!firebaseConfig) throw new Error("Firebase DB config missing.");
 
@@ -993,10 +995,9 @@
                 app.db = getFirestore(firebaseApp);
                 app.storage = getStorage(firebaseApp);
 
-
-                await signInAnonymously(app.auth);
+                const userCred = await signInAnonymously(app.auth);
                 
-                app.userId = app.auth.currentUser?.uid;
+                app.userId = userCred.user.uid;
                 if(!app.userId) throw new Error("Auth block.");
 
                 const settingsRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'settings', 'admin');
