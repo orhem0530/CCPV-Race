@@ -87,6 +87,8 @@
         
         /* SOS Overlay for Admin */
         #admin-sos-alert { display: none; position: fixed; top: 0; left: 0; width: 100%; padding: 20px; background: var(--danger); color: white; text-align: center; font-weight: bold; font-size: 20px; z-index: 9999; box-shadow: 0 5px 20px rgba(255,0,0,0.8);}
+        
+        .settings-card { background: #1a1a1a; padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid var(--neon-blue); }
     </style>
 </head>
 <body>
@@ -133,10 +135,18 @@
         </div>
 
         <div id="admin-manage-tab" class="tab-content">
+            <!-- ADMIN SETTINGS -->
+            <div class="settings-card">
+                <h3 style="margin-bottom: 10px; color: var(--neon-blue);">Admin Settings</h3>
+                <input type="password" id="new-admin-password" placeholder="Set New Admin Password">
+                <button class="btn-neon btn-blue" style="width: 100%;" onclick="updateAdminPassword()">Update Admin Password</button>
+            </div>
+
             <h3>Register New Team</h3>
             <input type="text" id="new-team-name" placeholder="Team Name">
             <input type="text" id="new-team-pin" placeholder="Assign PIN">
             <button class="btn-neon" style="margin-bottom: 20px; width:100%" onclick="registerTeam()">Add Team</button>
+            
             <h3>Active Rosters</h3>
             <div id="teams-list"></div>
         </div>
@@ -209,7 +219,6 @@
             setTimeout(() => osc.stop(), 1000);
         }
 
-        // Voice Recording Variables
         let mediaRecorder, audioChunks = [];
 
         function throttle(func, limit) {
@@ -231,30 +240,46 @@
             const role = document.getElementById('login-role').value;
             const password = document.getElementById('login-password').value;
 
-            if (role === 'admin') {
-                if (password === 'admin123') { 
-                    currentUserRole = 'admin';
+            try {
+                if (role === 'admin') {
+                    // Fetch dynamic admin password
+                    const adminDoc = await db.collection('settings').doc('admin').get();
+                    let actualAdminPassword = 'admin123'; // Default fallback
+                    
+                    if (adminDoc.exists && adminDoc.data().password) {
+                        actualAdminPassword = adminDoc.data().password;
+                    } else {
+                        // Initialize first time
+                        await db.collection('settings').doc('admin').set({ password: 'admin123' });
+                    }
+
+                    if (password === actualAdminPassword) { 
+                        currentUserRole = 'admin';
+                        document.getElementById('login-screen').classList.remove('active');
+                        document.getElementById('admin-screen').classList.add('active');
+                        initAdmin();
+                    } else alert('Invalid Admin Password');
+                } else {
+                    const teamName = document.getElementById('team-name').value.trim();
+                    if (!teamName || !password) return alert('Enter Team Name and PIN');
+                    const teamRef = db.collection('teams').doc(teamName.replace(/\s+/g, '-').toLowerCase());
+                    const doc = await teamRef.get();
+
+                    if (doc.exists) { if (doc.data().pin !== password) return alert('Incorrect PIN'); } 
+                    else await teamRef.set({ name: teamName, pin: password, status: 'active', sos: false, lat: 0, lng: 0 });
+
+                    currentTeamId = teamRef.id;
+                    currentUserRole = 'participant';
+                    document.getElementById('p-team-display').innerText = `Team: ${teamName}`;
+                    
                     document.getElementById('login-screen').classList.remove('active');
-                    document.getElementById('admin-screen').classList.add('active');
-                    initAdmin();
-                } else alert('Invalid Admin Password');
-            } else {
-                const teamName = document.getElementById('team-name').value.trim();
-                if (!teamName || !password) return alert('Enter Team Name and PIN');
-                const teamRef = db.collection('teams').doc(teamName.replace(/\s+/g, '-').toLowerCase());
-                const doc = await teamRef.get();
-
-                if (doc.exists) { if (doc.data().pin !== password) return alert('Incorrect PIN'); } 
-                else await teamRef.set({ name: teamName, pin: password, status: 'active', sos: false, lat: 0, lng: 0 });
-
-                currentTeamId = teamRef.id;
-                currentUserRole = 'participant';
-                document.getElementById('p-team-display').innerText = `Team: ${teamName}`;
-                
-                document.getElementById('login-screen').classList.remove('active');
-                document.getElementById('participant-screen').classList.add('active');
-                
-                initParticipant();
+                    document.getElementById('participant-screen').classList.add('active');
+                    
+                    initParticipant();
+                }
+            } catch (err) {
+                console.error("Login Error: ", err);
+                alert("Database connection error.");
             }
         }
 
@@ -263,8 +288,30 @@
         const DEFAULT_COORDS = [10.3157, 123.8854];
 
         // ==========================================
-        // ADMIN LOGIC & SOS MONITORING
+        // ADMIN LOGIC & PASSWORD MANAGEMENT
         // ==========================================
+        async function updateAdminPassword() {
+            const newPass = document.getElementById('new-admin-password').value.trim();
+            if (!newPass) return alert("Please enter a new password");
+            
+            try {
+                await db.collection('settings').doc('admin').set({ password: newPass }, { merge: true });
+                alert("Admin Password successfully updated!");
+                document.getElementById('new-admin-password').value = '';
+            } catch (err) {
+                alert("Error updating password: " + err.message);
+            }
+        }
+
+        function editTeamPin(teamId, teamName, currentPin) {
+            const newPin = prompt(`Enter new PIN for ${teamName}:`, currentPin);
+            if (newPin && newPin.trim() !== "" && newPin !== currentPin) {
+                db.collection('teams').doc(teamId).update({ pin: newPin.trim() })
+                    .then(() => alert(`PIN for ${teamName} updated successfully!`))
+                    .catch(err => alert("Failed to update PIN: " + err.message));
+            }
+        }
+
         function initAdmin() {
             adminMap = L.map('admin-map').setView(DEFAULT_COORDS, 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(adminMap);
@@ -283,7 +330,6 @@
                     const team = change.doc.data();
                     const tId = change.doc.id;
 
-                    // SOS Sound & Visual Alert
                     if (team.sos) {
                         isSosActive = true;
                         playAdminSiren();
@@ -318,6 +364,9 @@
                                     <strong>${team.name}</strong><br>
                                     ${team.sos ? `<button class="btn-neon btn-danger" style="padding: 2px 8px; font-size:10px" onclick="clearSOS('${tId}')">CLEAR SOS</button>` : `<small style="color:var(--text-muted)">PIN: ${team.pin}</small>`}
                                 </div>
+                            </div>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="btn-neon btn-blue" style="padding: 5px 10px; font-size:12px; width: auto;" onclick="editTeamPin('${tId}', '${team.name}', '${team.pin}')">EDIT PIN</button>
                             </div>
                         </div>`;
                 });
@@ -409,13 +458,11 @@
             setStatus("SECURE LINE TO HQ", "var(--neon-green)");
         }
 
-        // Handle Photo/Video selection
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (file) uploadMedia(file, 'file');
         }
 
-        // Handle Voice Memos
         async function startVoiceRecord() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -424,7 +471,7 @@
                 mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
                 mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    stream.getTracks().forEach(track => track.stop()); // release mic
+                    stream.getTracks().forEach(track => track.stop()); 
                     await uploadMedia(audioBlob, 'voice');
                 };
                 mediaRecorder.start();
