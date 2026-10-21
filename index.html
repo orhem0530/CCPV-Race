@@ -121,8 +121,13 @@
                 <p class="text-[10px] font-tech tracking-widest text-neon-blue uppercase hidden md:block">Real-Time Telemetry & Comms</p>
             </div>
         </div>
-        <div id="status-indicator" class="font-tech font-bold text-gray-500 bg-neon-panel border border-gray-800 px-3 py-1 cut-corner-sm flex items-center shadow-lg relative z-10">
-            <i class="fa-solid fa-circle text-[8px] mr-2"></i> <span>OFFLINE</span>
+        <div class="flex items-center gap-2 relative z-10">
+            <div id="status-indicator" class="font-tech font-bold text-gray-500 bg-neon-panel border border-gray-800 px-3 py-1 cut-corner-sm flex items-center shadow-lg">
+                <i class="fa-solid fa-circle text-[8px] mr-2"></i> <span>OFFLINE</span>
+            </div>
+            <button id="logout-btn" onclick="app.logout()" class="hidden bg-neon-panel border border-gray-800 hover:border-neon-pink text-gray-500 hover:text-neon-pink px-3 py-1 cut-corner-sm flex items-center shadow-lg transition-colors" title="Disconnect & Logout">
+                <i class="fa-solid fa-power-off"></i>
+            </button>
         </div>
     </header>
 
@@ -197,7 +202,6 @@
                 <div class="text-left">
                     <label class="block text-xs font-tech text-neon-pink mb-1 tracking-wider uppercase">HQ Master Password</label>
                     <input type="password" id="admin-password-input" class="w-full bg-black border border-gray-700 cut-corner-sm px-4 py-3 text-white focus:outline-none focus:border-neon-pink focus:glow-pink transition-all font-tech text-lg" placeholder="••••••••">
-                    <p class="text-[10px] text-gray-500 mt-2 font-tech">SYSTEM DEFAULT: <code class="text-neon-pink">admin123</code></p>
                 </div>
                 <button onclick="app.joinAsAdmin()" class="w-full bg-neon-pink text-white font-sport text-xl py-3 skewed-btn hover:bg-white hover:text-neon-pink transition-colors mt-6 shadow-[0_0_15px_rgba(255,0,85,0.4)]">
                     <span>ACCESS COMMAND <i class="fa-solid fa-unlock ml-2 text-sm"></i></span>
@@ -513,6 +517,7 @@
                 app.teamDocId = existingId || app.userId;
 
                 document.getElementById('participant-team-name').innerText = app.teamName;
+                document.getElementById('logout-btn').classList.remove('hidden');
                 
                 const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.teamDocId);
                 await setDoc(myRef, {
@@ -534,11 +539,35 @@
                 app.role = 'admin';
                 app.teamName = 'COMMAND HQ';
                 app.teamDocId = app.userId;
+                document.getElementById('logout-btn').classList.remove('hidden');
                 showScreen('admin-screen');
                 app.initMap();
                 app.setupAdminTracking();
                 app.setupChat();
                 setTimeout(() => app.map.invalidateSize(), 500);
+            },
+
+            logout: () => {
+                if (app.watchId !== null) {
+                    navigator.geolocation.clearWatch(app.watchId);
+                    app.watchId = null;
+                }
+                
+                app.role = null;
+                app.teamName = null;
+                app.teamDocId = null;
+                app.adminChatTarget = 'group';
+                app.participantChatTab = 'private';
+                
+                document.getElementById('team-name-input').value = '';
+                document.getElementById('team-pin-input').value = '';
+                document.getElementById('admin-password-input').value = '';
+                document.getElementById('setup-error').classList.add('hidden');
+                document.getElementById('admin-login-error').classList.add('hidden');
+                
+                document.getElementById('logout-btn').classList.add('hidden');
+                updateStatus('SYSTEM ONLINE');
+                showScreen('role-screen');
             },
 
             startTracking: () => {
