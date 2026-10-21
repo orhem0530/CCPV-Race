@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Viewport locked for native app-like experience -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#121212">
+    <!-- Prevent 404 favicon error on Vercel/GitHub Pages -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏁</text></svg>">
     <title>Amazing Race HQ</title>
 
     <!-- Leaflet CSS for Map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
     <style>
         /* Sporty, Neon Dark Theme */
@@ -25,7 +27,7 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        body { background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; }
+        body { background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 
         /* Generic UI Elements */
         .btn-neon {
@@ -66,14 +68,14 @@
         .tab-content.active { display: flex; }
 
         /* Map Container */
-        .map-container { flex: 1; min-height: 300px; border-radius: 12px; overflow: hidden; border: 2px solid #333; margin-bottom: 15px; }
+        .map-container { flex: 1; min-height: 300px; border-radius: 12px; overflow: hidden; border: 2px solid #333; margin-bottom: 15px; z-index: 1;}
         
         /* Chat UI */
         .chat-container { display: flex; flex-direction: column; flex: 1; background: var(--surface-color); border-radius: 12px; border: 1px solid #333; overflow: hidden;}
         .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 14px; }
-        .msg.admin { align-self: flex-start; background: #2a2a2a; border-left: 3px solid var(--neon-blue); }
-        .msg.team { align-self: flex-end; background: #1a3a1a; border-right: 3px solid var(--neon-green); }
+        .msg { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 14px; word-wrap: break-word;}
+        .msg.admin { align-self: flex-start; background: #2a2a2a; border-left: 3px solid var(--neon-blue); border-bottom-left-radius: 2px;}
+        .msg.team { align-self: flex-end; background: #1a3a1a; border-right: 3px solid var(--neon-green); border-bottom-right-radius: 2px;}
         .chat-input { display: flex; padding: 10px; background: #1a1a1a; }
         .chat-input input { margin-bottom: 0; border-radius: 20px 0 0 20px; border-right: none; }
         .chat-input button { width: 80px; border-radius: 0 20px 20px 0; }
@@ -136,7 +138,7 @@
             <div class="chat-container">
                 <div id="admin-chat-messages" class="chat-messages"></div>
                 <div class="chat-input">
-                    <input type="text" id="admin-msg-input" placeholder="Transmit message...">
+                    <input type="text" id="admin-msg-input" placeholder="Transmit message..." onkeypress="if(event.key === 'Enter') sendAdminMessage()">
                     <button class="btn-neon btn-blue" onclick="sendAdminMessage()">SEND</button>
                 </div>
             </div>
@@ -170,7 +172,7 @@
                 <div style="padding: 10px; background: #1a1a1a; font-size: 12px; text-align: center; color: var(--neon-green);">SECURE LINE TO HQ</div>
                 <div id="team-chat-messages" class="chat-messages"></div>
                 <div class="chat-input">
-                    <input type="text" id="team-msg-input" placeholder="Message Admin...">
+                    <input type="text" id="team-msg-input" placeholder="Message Admin..." onkeypress="if(event.key === 'Enter') sendTeamMessage()">
                     <button class="btn-neon" onclick="sendTeamMessage()">SEND</button>
                 </div>
             </div>
@@ -181,21 +183,25 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
         // ==========================================
         // 1. FIREBASE CONFIGURATION
         // ==========================================
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyCq2ns7RrHuW05e2L3wavFnrzUIHZ4bl74",
+            authDomain: "ccpv-amazing-race.firebaseapp.com",
+            projectId: "ccpv-amazing-race",
+            storageBucket: "ccpv-amazing-race.firebasestorage.app",
+            messagingSenderId: "741411391079",
+            appId: "1:741411391079:web:7fa055e95165aecf8536c2",
+            measurementId: "G-RS3Z9F0KBK"
         };
-        firebase.initializeApp(firebaseConfig);
+        // Initialize safely
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
 
         // ==========================================
@@ -204,11 +210,10 @@
         let currentUserRole = null;
         let currentTeamId = null;
         let adminMap, participantMap;
-        let activeMarkers = {}; // Flicker-free marker dictionary
+        let activeMarkers = {}; 
         let chatUnsubscribe = null;
         let gpsWatchId = null;
 
-        // Throttling function to save battery and Firebase quota
         function throttle(func, limit) {
             let inThrottle;
             return function() {
@@ -222,7 +227,6 @@
             }
         }
 
-        // Screen Wake Lock to prevent screen turning off during the race
         async function requestWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
@@ -234,7 +238,7 @@
             }
         }
 
-        // Client-side Image Compression (Canvas)
+        // Strict client-side compression to protect Firestore limits
         function compressImage(file, callback) {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -243,13 +247,13 @@
                 img.src = event.target.result;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 100;
+                    const MAX_WIDTH = 80; // Small size for fast map rendering
                     const scaleSize = MAX_WIDTH / img.width;
                     canvas.width = MAX_WIDTH;
                     canvas.height = img.height * scaleSize;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    callback(canvas.toDataURL('image/jpeg', 0.7)); // Returns Base64 string
+                    callback(canvas.toDataURL('image/jpeg', 0.5)); // Heavy compression
                 }
             }
         }
@@ -266,39 +270,43 @@
             const role = document.getElementById('login-role').value;
             const password = document.getElementById('login-password').value;
 
-            if (role === 'admin') {
-                if (password === 'admin123') { // In production, verify against DB
-                    currentUserRole = 'admin';
+            try {
+                if (role === 'admin') {
+                    if (password === 'admin123') { 
+                        currentUserRole = 'admin';
+                        document.getElementById('login-screen').classList.remove('active');
+                        document.getElementById('admin-screen').classList.add('active');
+                        initAdmin();
+                    } else {
+                        alert('Invalid Admin Password');
+                    }
+                } else {
+                    const teamName = document.getElementById('team-name').value.trim();
+                    if (!teamName || !password) return alert('Enter Team Name and PIN');
+
+                    const teamRef = db.collection('teams').doc(teamName.replace(/\s+/g, '-').toLowerCase());
+                    const doc = await teamRef.get();
+
+                    if (doc.exists) {
+                        if (doc.data().pin !== password) return alert('Incorrect Team PIN');
+                    } else {
+                        // Auto-register
+                        await teamRef.set({ name: teamName, pin: password, status: 'active', lat: 0, lng: 0 });
+                    }
+
+                    currentTeamId = teamRef.id;
+                    currentUserRole = 'participant';
+                    document.getElementById('p-team-display').innerText = `Team: ${teamName}`;
+                    
                     document.getElementById('login-screen').classList.remove('active');
-                    document.getElementById('admin-screen').classList.add('active');
-                    initAdmin();
-                } else {
-                    alert('Invalid Admin Password');
+                    document.getElementById('participant-screen').classList.add('active');
+                    
+                    initParticipant();
+                    requestWakeLock();
                 }
-            } else {
-                const teamName = document.getElementById('team-name').value.trim();
-                if (!teamName || !password) return alert('Enter Team Name and PIN');
-
-                // Check or create team
-                const teamRef = db.collection('teams').doc(teamName.replace(/\s+/g, '-').toLowerCase());
-                const doc = await teamRef.get();
-
-                if (doc.exists) {
-                    if (doc.data().pin !== password) return alert('Incorrect Team PIN');
-                } else {
-                    // Auto-register if doesn't exist (Optional based on rules)
-                    await teamRef.set({ name: teamName, pin: password, status: 'active', lat: 0, lng: 0 });
-                }
-
-                currentTeamId = teamRef.id;
-                currentUserRole = 'participant';
-                document.getElementById('p-team-display').innerText = `Team: ${teamName}`;
-                
-                document.getElementById('login-screen').classList.remove('active');
-                document.getElementById('participant-screen').classList.add('active');
-                
-                initParticipant();
-                requestWakeLock();
+            } catch (error) {
+                console.error("Login Error:", error);
+                alert("Database connection error. Please check your internet connection.");
             }
         }
 
@@ -309,9 +317,9 @@
         }
 
         // ==========================================
-        // 4. MAP INITIALIZATION (OpenStreetMap)
+        // 4. MAP INITIALIZATION 
         // ==========================================
-        const CEBU_COORDS = [10.3157, 123.8854];
+        const DEFAULT_COORDS = [10.3157, 123.8854]; // Cebu City default
 
         function createCustomIcon(teamData) {
             let innerHtml = teamData.avatarBase64 
@@ -330,18 +338,21 @@
         // 5. ADMIN LOGIC
         // ==========================================
         function initAdmin() {
-            // Init Admin Map
-            adminMap = L.map('admin-map').setView(CEBU_COORDS, 13);
+            adminMap = L.map('admin-map').setView(DEFAULT_COORDS, 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19, attribution: '© OpenStreetMap'
             }).addTo(adminMap);
+            
+            // Force map to recalculate size in case container was hidden
+            setTimeout(() => { adminMap.invalidateSize(); }, 200);
 
-            // Listen to Team Locations for Flicker-Free Updates
             db.collection('teams').onSnapshot(snapshot => {
                 const teamSelector = document.getElementById('admin-chat-selector');
                 const teamsList = document.getElementById('teams-list');
                 
-                // Clear UI lists (Maps handled separately)
+                // Preserve current selection
+                const currentSelection = teamSelector.value;
+                
                 teamSelector.innerHTML = '<option value="">Select a team to contact...</option>';
                 teamsList.innerHTML = '';
 
@@ -349,7 +360,6 @@
                     const team = change.doc.data();
                     const tId = change.doc.id;
 
-                    // Map Logic (Flicker-Free)
                     if (team.lat && team.lng) {
                         const latLng = [team.lat, team.lng];
                         if (change.type === 'added' || change.type === 'modified') {
@@ -366,11 +376,14 @@
                         adminMap.removeLayer(activeMarkers[tId]);
                         delete activeMarkers[tId];
                     }
+                });
 
-                    // Populate Chat Dropdown
+                // Re-render full list for UI
+                snapshot.forEach(doc => {
+                    const team = doc.data();
+                    const tId = doc.id;
+                    
                     teamSelector.innerHTML += `<option value="${tId}">${team.name}</option>`;
-
-                    // Populate Manage Teams List
                     teamsList.innerHTML += `
                         <div class="team-card ${team.status === 'active' ? 'active-status' : ''}">
                             <div class="team-info">
@@ -384,6 +397,9 @@
                         </div>
                     `;
                 });
+                
+                // Restore selection
+                if(currentSelection) teamSelector.value = currentSelection;
             });
         }
 
@@ -394,7 +410,10 @@
             event.target.classList.add('active');
             document.getElementById(`admin-${tabName}-tab`).classList.add('active');
             
-            if (tabName === 'map') setTimeout(() => adminMap.invalidateSize(), 100);
+            // Crucial fix: Leaflet needs to know if its container size changed
+            if (tabName === 'map') {
+                setTimeout(() => { adminMap.invalidateSize(); }, 100);
+            }
         }
 
         function registerTeam() {
@@ -413,7 +432,9 @@
                     document.getElementById('new-team-name').value = '';
                     document.getElementById('new-team-pin').value = '';
                     fileInput.value = '';
-                    alert("Team Registered");
+                    alert("Team Registered Successfully");
+                }).catch(err => {
+                    alert("Failed to save: " + err.message);
                 });
             };
 
@@ -422,20 +443,23 @@
         }
 
         function deleteTeam(id) {
-            if(confirm("Remove this team?")) db.collection('teams').doc(id).delete();
+            if(confirm("Remove this team permanently?")) db.collection('teams').doc(id).delete();
         }
 
         // ==========================================
-        // 6. PARTICIPANT LOGIC (GPS Tracking)
+        // 6. PARTICIPANT LOGIC 
         // ==========================================
         const updateLocationThrottled = throttle((lat, lng) => {
-            db.collection("teams").doc(currentTeamId).update({ lat: lat, lng: lng });
-        }, 5000); // Only write to Firebase max once per 5 seconds
+            db.collection("teams").doc(currentTeamId).update({ lat: lat, lng: lng })
+              .catch(err => console.warn("Background sync failed", err));
+        }, 5000); 
 
         function initParticipant() {
-            participantMap = L.map('participant-map').setView(CEBU_COORDS, 15);
+            participantMap = L.map('participant-map').setView(DEFAULT_COORDS, 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(participantMap);
             
+            setTimeout(() => { participantMap.invalidateSize(); }, 200);
+
             let myMarker = null;
 
             if (navigator.geolocation) {
@@ -444,24 +468,25 @@
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
                         
-                        // Update UI Map
                         if (!myMarker) {
                             myMarker = L.marker([lat, lng]).addTo(participantMap);
-                            setTimeout(() => participantMap.invalidateSize(), 100);
                         } else {
                             myMarker.setLatLng([lat, lng]);
                         }
                         participantMap.panTo([lat, lng]);
-
-                        // Throttled Firebase Update
                         updateLocationThrottled(lat, lng);
                     },
-                    (error) => console.error("GPS Error:", error),
-                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+                    (error) => {
+                        console.error("GPS Error:", error);
+                        // Optional user alert for denied permissions
+                        if(error.code === 1) alert("Please enable Location Services to participate.");
+                    },
+                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
                 );
+            } else {
+                alert("Your browser does not support GPS tracking.");
             }
 
-            // Init their specific chat channel
             initChatStream(currentTeamId, 'team-chat-messages');
         }
 
@@ -492,27 +517,32 @@
                         const label = msg.sender === 'admin' ? 'HQ' : 'Team';
                         container.innerHTML += `<div class="msg ${cssClass}"><b>${label}:</b> ${msg.text}</div>`;
                     });
+                    // Auto scroll to bottom
                     container.scrollTop = container.scrollHeight;
                 });
         }
 
         function sendAdminMessage() {
             const teamId = document.getElementById('admin-chat-selector').value;
-            const text = document.getElementById('admin-msg-input').value;
+            const text = document.getElementById('admin-msg-input').value.trim();
             if (!teamId || !text) return;
             
             db.collection('chats').doc(teamId).collection('messages').add({
-                sender: 'admin', text: text, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                sender: 'admin', 
+                text: text, 
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             document.getElementById('admin-msg-input').value = '';
         }
 
         function sendTeamMessage() {
-            const text = document.getElementById('team-msg-input').value;
+            const text = document.getElementById('team-msg-input').value.trim();
             if (!text) return;
             
             db.collection('chats').doc(currentTeamId).collection('messages').add({
-                sender: 'team', text: text, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                sender: 'team', 
+                text: text, 
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             document.getElementById('team-msg-input').value = '';
         }
