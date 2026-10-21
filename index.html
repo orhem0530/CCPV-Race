@@ -131,6 +131,13 @@
         </div>
     </header>
 
+    <!-- HQ Emergency Banner (Hidden by default, flashes when SOS triggered) -->
+    <div id="hq-emergency-banner" class="hidden bg-red-600 text-white px-4 py-2 font-sport text-center uppercase tracking-widest z-50 flex items-center justify-center gap-4 animate-pulse">
+        <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+        <span id="emergency-banner-text">EMERGENCY SOS BEACON RECEIVED FROM TEAM</span>
+        <button onclick="app.dismissEmergency()" class="bg-black text-red-500 px-3 py-1 text-xs font-tech cut-corner-sm hover:bg-white transition-colors">ACKNOWLEDGE & CLEAR</button>
+    </div>
+
     <main class="flex-1 relative overflow-hidden flex flex-col">
         
         <!-- Loader -->
@@ -227,6 +234,11 @@
                         </div>
                     </div>
                 </div>
+                <!-- SOS Emergency Trigger Button -->
+                <button onclick="app.triggerSOS()" class="relative z-10 bg-red-600 hover:bg-red-500 text-white font-sport px-4 py-3 cut-corner-sm border-2 border-white shadow-[0_0_15px_rgba(255,0,0,0.6)] animate-pulse flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    <span class="text-sm tracking-wider uppercase">SOS BEACON</span>
+                </button>
             </div>
             
             <div class="flex-1 flex flex-col bg-neon-panel relative border-t-4 border-black">
@@ -482,7 +494,7 @@
             map: null, markers: {}, watchId: null, mapZoomedIn: false,
             adminPasswordHash: 'admin123',
             allMessages: [], participantChatTab: 'private', adminChatTarget: 'group', participantsList: {}, 
-            mediaRecorder: null, audioChunks: [], isRecording: false,
+            mediaRecorder: null, audioChunks: [], isRecording: false, activeEmergencyTeam: null,
 
             showParticipantSetup: () => showScreen('participant-setup-screen'),
             showAdminLogin: () => showScreen('admin-login-screen'),
@@ -521,7 +533,7 @@
                 
                 const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.teamDocId);
                 await setDoc(myRef, {
-                    name: app.teamName, pin: pinInput, status: 'active', lastUpdated: serverTimestamp()
+                    name: app.teamName, pin: pinInput, status: 'active', sos: false, lastUpdated: serverTimestamp()
                 }, { merge: true });
 
                 showScreen('participant-screen');
@@ -547,7 +559,14 @@
                 setTimeout(() => app.map.invalidateSize(), 500);
             },
 
-            logout: () => {
+            logout: async () => {
+                if (app.role === 'participant' && app.teamDocId) {
+                    try {
+                        const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.teamDocId);
+                        await setDoc(myRef, { sos: false }, { merge: true });
+                    } catch(e) {}
+                }
+
                 if (app.watchId !== null) {
                     navigator.geolocation.clearWatch(app.watchId);
                     app.watchId = null;
@@ -568,6 +587,27 @@
                 document.getElementById('logout-btn').classList.add('hidden');
                 updateStatus('SYSTEM ONLINE');
                 showScreen('role-screen');
+            },
+
+            triggerSOS: async () => {
+                if (!app.teamDocId) return;
+                try {
+                    const myRef = doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.teamDocId);
+                    await setDoc(myRef, { sos: true, lastUpdated: serverTimestamp() }, { merge: true });
+                    showAlert("EMERGENCY BEACON ACTIVE", "HQ Command has been instantly alerted with your live telemetry coordinates.");
+                } catch(e) {
+                    showAlert("ERROR", "Failed to transmit SOS signal.");
+                }
+            },
+
+            dismissEmergency: async () => {
+                if(app.activeEmergencyTeam) {
+                    try {
+                        await setDoc(doc(app.db, 'artifacts', app.appId, 'public', 'data', 'participants', app.activeEmergencyTeam), { sos: false }, { merge: true });
+                    } catch(e) {}
+                }
+                document.getElementById('hq-emergency-banner').classList.add('hidden');
+                app.activeEmergencyTeam = null;
             },
 
             startTracking: () => {
@@ -632,10 +672,18 @@
                 onSnapshot(participantsRef, (snapshot) => {
                     let activeCount = 0;
                     const updatedParticipants = {};
+                    let emergencyTriggered = false;
 
                     snapshot.forEach(docSnap => {
                         const data = docSnap.data();
                         updatedParticipants[docSnap.id] = data;
+
+                        if (data.sos) {
+                            emergencyTriggered = true;
+                            app.activeEmergencyTeam = docSnap.id;
+                            document.getElementById('emergency-banner-text').innerText = `EMERGENCY SOS BEACON RECEIVED FROM: [ ${data.name} ]`;
+                            document.getElementById('hq-emergency-banner').classList.remove('hidden');
+                        }
 
                         if (data.lat && data.lng) {
                             activeCount++;
@@ -643,8 +691,9 @@
                                 ? `<img src="${data.photoUrl}" class="h-full w-full object-cover">`
                                 : `<span class="text-sm font-sport text-black">${getInitials(data.name)}</span>`;
 
-                            let colorClass = data.status === 'disqualified' ? 'border-neon-pink bg-neon-pink glow-pink' : 
-                                            (data.status === 'suspended' ? 'border-yellow-500 bg-yellow-500' : 'border-neon-volt bg-neon-volt glow-volt');
+                            let colorClass = data.sos ? 'border-red-600 bg-red-600 animate-bounce shadow-[0_0_20px_red]' : 
+                                            (data.status === 'disqualified' ? 'border-neon-pink bg-neon-pink glow-pink' : 
+                                            (data.status === 'suspended' ? 'border-yellow-500 bg-yellow-500' : 'border-neon-volt bg-neon-volt glow-volt'));
 
                             const customIcon = L.divIcon({
                                 className: 'custom-div-icon',
@@ -656,6 +705,7 @@
                                 <div class="text-center p-2 font-tech">
                                     <strong class="text-neon-blue text-lg uppercase tracking-wider block border-b border-gray-700 pb-1 mb-1">${data.name}</strong>
                                     <span class="text-[10px] text-gray-400 uppercase">Status: <b class="${data.status === 'active' ? 'text-neon-volt' : 'text-neon-pink'}">${data.status || 'ACTIVE'}</b></span><br>
+                                    ${data.sos ? '<span class="text-xs text-red-500 font-bold block my-1">🚨 EMERGENCY SOS ACTIVE</span>' : ''}
                                     <button onclick="app.switchAdminChat('${docSnap.id}'); app.switchAdminTab('dashboard');" class="mt-3 bg-neon-blue text-black font-sport px-4 py-1 skewed-btn text-xs w-full hover:bg-white transition-colors"><span>COMM LINK</span></button>
                                 </div>
                             `;
@@ -669,6 +719,10 @@
                             }
                         }
                     });
+
+                    if(!emergencyTriggered && app.activeEmergencyTeam === null) {
+                        document.getElementById('hq-emergency-banner').classList.add('hidden');
+                    }
 
                     Object.keys(app.markers).forEach(id => {
                         if (!updatedParticipants[id]) {
@@ -716,7 +770,7 @@
 
                 try {
                     await setDoc(doc(collection(app.db, 'artifacts', app.appId, 'public', 'data', 'participants')), {
-                        name: name, pin: pin, photoUrl: photoUrl, status: 'active', createdAt: serverTimestamp()
+                        name: name, pin: pin, photoUrl: photoUrl, status: 'active', sos: false, createdAt: serverTimestamp()
                     });
                     document.getElementById('add-team-name').value = '';
                     document.getElementById('add-team-pin').value = '';
@@ -743,11 +797,13 @@
                         ? `<img src="${data.photoUrl}" class="h-14 w-14 cut-corner-sm object-cover border border-gray-600 shrink-0">`
                         : `<div class="h-14 w-14 cut-corner-sm bg-gray-800 flex items-center justify-center font-sport text-xl text-white border border-gray-600 shrink-0">${getInitials(data.name)}</div>`;
 
-                    let statusBadge = data.status === 'disqualified' 
-                        ? `<span class="text-[8px] bg-neon-pink/20 text-neon-pink px-2 py-1 border border-neon-pink tracking-widest uppercase">DISQUALIFIED</span>`
-                        : (data.status === 'suspended' 
-                            ? `<span class="text-[8px] bg-yellow-500/20 text-yellow-500 px-2 py-1 border border-yellow-500 tracking-widest uppercase">SUSPENDED</span>`
-                            : `<span class="text-[8px] bg-neon-volt/20 text-neon-volt px-2 py-1 border border-neon-volt tracking-widest uppercase">ACTIVE</span>`);
+                    let statusBadge = data.sos 
+                        ? `<span class="text-[8px] bg-red-600 text-white px-2 py-1 border border-red-500 tracking-widest uppercase animate-pulse">SOS ACTIVE</span>`
+                        : (data.status === 'disqualified' 
+                            ? `<span class="text-[8px] bg-neon-pink/20 text-neon-pink px-2 py-1 border border-neon-pink tracking-widest uppercase">DISQUALIFIED</span>`
+                            : (data.status === 'suspended' 
+                                ? `<span class="text-[8px] bg-yellow-500/20 text-yellow-500 px-2 py-1 border border-yellow-500 tracking-widest uppercase">SUSPENDED</span>`
+                                : `<span class="text-[8px] bg-neon-volt/20 text-neon-volt px-2 py-1 border border-neon-volt tracking-widest uppercase">ACTIVE</span>`));
 
                     card.innerHTML = `
                         <div class="absolute inset-0 bg-neon-blue/5 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-300"></div>
