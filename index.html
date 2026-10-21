@@ -976,8 +976,15 @@
         const init = async () => {
             try {
                 app.appId = typeof __app_id !== 'undefined' ? __app_id : 'amazing-race-pro';
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                const firebaseConfig = {
+  apiKey: "AIzaSyCq2ns7RrHuW05e2L3wavFnrzUIHZ4bl74",
+  authDomain: "ccpv-amazing-race.firebaseapp.com",
+  projectId: "ccpv-amazing-race",
+  storageBucket: "ccpv-amazing-race.firebasestorage.app",
+  messagingSenderId: "741411391079",
+  appId: "1:741411391079:web:7fa055e95165aecf8536c2",
+  measurementId: "G-RS3Z9F0KBK"
+};
 
                 if (!firebaseConfig) throw new Error("Firebase DB config missing.");
 
