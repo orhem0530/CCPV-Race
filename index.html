@@ -993,8 +993,8 @@
                 app.db = getFirestore(firebaseApp);
                 app.storage = getStorage(firebaseApp);
 
-                if (token) await signInWithCustomToken(app.auth, token);
-                else await signInAnonymously(app.auth);
+
+                await signInAnonymously(app.auth);
                 
                 app.userId = app.auth.currentUser?.uid;
                 if(!app.userId) throw new Error("Auth block.");
